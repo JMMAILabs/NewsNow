@@ -1,0 +1,100 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="Infraestructura" id="infra">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="u1" value="Lectores&#10;(gran volumen, picos)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="60" y="40" width="150" height="50" as="geometry"/></mxCell>
+        <mxCell id="u2" value="Editores / Redactores" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="250" y="40" width="150" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="r53" value="Route 53&#10;(DNS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="60" y="150" width="150" height="50" as="geometry"/></mxCell>
+        <mxCell id="cfp" value="CloudFront&#10;(web pública)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="250" y="150" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="cfa" value="CloudFront&#10;(panel admin)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1"><mxGeometry x="470" y="150" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="cog" value="Amazon Cognito&#10;(User Pool · JWT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1"><mxGeometry x="700" y="150" width="170" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="s3p" value="S3 · web pública&#10;(React estático)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="250" y="250" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="s3a" value="S3 · panel admin&#10;(React estático)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="470" y="250" width="180" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="cw" value="CloudWatch&#10;(logs · métricas · alarmas)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="60" y="360" width="180" height="60" as="geometry"/></mxCell>
+
+        <mxCell id="apigw" value="API Gateway&#10;(HTTP API)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="330" y="360" width="190" height="50" as="geometry"/></mxCell>
+        <mxCell id="lapi" value="Lambda · API REST&#10;(Python)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="560" y="360" width="190" height="50" as="geometry"/></mxCell>
+        <mxCell id="s3m" value="S3 · media&#10;(imágenes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1"><mxGeometry x="800" y="360" width="150" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="ddb" value="DynamoDB&#10;(on-demand · single-table)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="330" y="470" width="240" height="60" as="geometry"/></mxCell>
+        <mxCell id="strm" value="DynamoDB Streams" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="620" y="475" width="180" height="50" as="geometry"/></mxCell>
+        <mxCell id="bed" value="Amazon Bedrock&#10;(Claude)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="870" y="475" width="170" height="60" as="geometry"/></mxCell>
+
+        <mxCell id="sqs" value="SQS + DLQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="620" y="590" width="150" height="50" as="geometry"/></mxCell>
+        <mxCell id="lsum" value="Lambda · resumen&#10;de artículo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="820" y="590" width="180" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="eb" value="EventBridge Scheduler&#10;(cron diario)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="330" y="690" width="220" height="50" as="geometry"/></mxCell>
+        <mxCell id="ldaily" value="Lambda · resumen&#10;diario" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="620" y="690" width="180" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="u1" target="r53"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="u2" target="r53"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="login" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;" edge="1" parent="1" source="u2" target="cog"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="r53" target="cfp"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="r53" target="cfa"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" value="caché edge" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="cfp" target="s3p"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="cfa" target="s3a"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" value="GET noticias" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="cfp" target="apigw"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" value="CRUD" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="cfa" target="apigw"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" value="valida JWT" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;" edge="1" parent="1" source="cog" target="apigw"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="apigw" target="lapi"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="lapi" target="ddb"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="lapi" target="s3m"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="ddb" target="strm"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="strm" target="sqs"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="sqs" target="lsum"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="lsum" target="bed"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e18" value="guarda resumen" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;" edge="1" parent="1" source="lsum" target="ddb"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="eb" target="ldaily"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e20" value="lee resúmenes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;" edge="1" parent="1" source="ldaily" target="ddb"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e21" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="ldaily" target="bed"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e22" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#999999;" edge="1" parent="1" source="lapi" target="cw"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e23" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#999999;" edge="1" parent="1" source="lsum" target="cw"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e24" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#999999;" edge="1" parent="1" source="ldaily" target="cw"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Flujo de IA" id="ia">
+    <mxGraphModel dx="1200" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1150" pageHeight="500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="tA" value="FLUJO A — Resumen individual (event-driven, tiempo casi real)" style="text;html=1;fontStyle=1;fontSize=14;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="50" width="600" height="20" as="geometry"/></mxCell>
+        <mxCell id="aed" value="Editor&#10;crea/edita" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1"><mxGeometry x="40" y="90" width="110" height="50" as="geometry"/></mxCell>
+        <mxCell id="aapi" value="API Gateway&#10;+ Lambda" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1"><mxGeometry x="180" y="90" width="130" height="50" as="geometry"/></mxCell>
+        <mxCell id="addb" value="DynamoDB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="340" y="90" width="110" height="50" as="geometry"/></mxCell>
+        <mxCell id="astr" value="Streams" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="480" y="90" width="100" height="50" as="geometry"/></mxCell>
+        <mxCell id="asqs" value="SQS + DLQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="610" y="90" width="110" height="50" as="geometry"/></mxCell>
+        <mxCell id="alsum" value="Lambda&#10;resumen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="750" y="90" width="120" height="50" as="geometry"/></mxCell>
+        <mxCell id="abed" value="Bedrock&#10;(Claude)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="900" y="90" width="110" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="fa1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="aed" target="aapi"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="aapi" target="addb"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="addb" target="astr"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="astr" target="asqs"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="asqs" target="alsum"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="alsum" target="abed"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fa7" value="guarda resumen (READY)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;" edge="1" parent="1" source="alsum" target="addb"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="tB" value="FLUJO B — Resumen diario (batch programado, map-reduce)" style="text;html=1;fontStyle=1;fontSize=14;align=left;" vertex="1" parent="1"><mxGeometry x="40" y="250" width="600" height="20" as="geometry"/></mxCell>
+        <mxCell id="beb" value="EventBridge&#10;(cron diario)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="40" y="290" width="130" height="50" as="geometry"/></mxCell>
+        <mxCell id="blda" value="Lambda&#10;diario" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="200" y="290" width="120" height="50" as="geometry"/></mxCell>
+        <mxCell id="bddb" value="DynamoDB&#10;(lee resúmenes del día)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="350" y="290" width="170" height="50" as="geometry"/></mxCell>
+        <mxCell id="bbed" value="Bedrock&#10;(resumen de resúmenes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1"><mxGeometry x="550" y="290" width="170" height="50" as="geometry"/></mxCell>
+        <mxCell id="bddb2" value="DynamoDB&#10;(guarda DAILY#fecha)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1"><mxGeometry x="750" y="290" width="170" height="50" as="geometry"/></mxCell>
+
+        <mxCell id="fb1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="beb" target="blda"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fb2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="blda" target="bddb"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fb3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="bddb" target="bbed"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="fb4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="bbed" target="bddb2"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

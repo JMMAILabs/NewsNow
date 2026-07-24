@@ -25,7 +25,7 @@ CasoPractico_Logicalis/
 │   ├── 01-infraestructura.md      ← Diagrama + tráfico + automatización + prod
 │   ├── 02-desarrollo-ia.md        ← Overview IA, datos, serverless, rendimiento
 │   ├── 03-uso-de-ia.md            ← Cómo he usado la IA en esta prueba
-│   ├── diagrams/                  ← Diagramas Mermaid (infra + IA)
+│   ├── diagrams/                  ← Diagramas Mermaid + draw.io (infra + IA)
 │   └── assets/                    ← Capturas (validación en PartyRock)
 │
 ├── terraform/                     ← IaC para desplegar todo en AWS

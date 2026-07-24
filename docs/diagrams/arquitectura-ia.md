@@ -1,6 +1,9 @@
 # Diagrama de arquitectura — Asistente de IA
 
 > Detalle del subsistema de IA (resumen individual + resumen diario).
+>
+> Versión **draw.io** en [`newsnow-arquitectura.drawio`](newsnow-arquitectura.drawio) →
+> página *Flujo de IA*.
 
 ## 1. Resumen de un artículo individual (event-driven)
 

@@ -8,7 +8,7 @@
 
 ## 1. Diagrama de arquitectura y razonamiento
 
-📊 **Diagrama:** [`diagrams/arquitectura-infra.md`](diagrams/arquitectura-infra.md)
+📊 **Diagrama:** [`diagrams/arquitectura-infra.md`](diagrams/arquitectura-infra.md) (Mermaid) · [`diagrams/newsnow-arquitectura.drawio`](diagrams/newsnow-arquitectura.drawio) (**draw.io**, el del enunciado)
 
 ### Los tres componentes del enunciado y su mapeo a AWS
 

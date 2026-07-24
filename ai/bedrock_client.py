@@ -12,22 +12,29 @@ import re
 MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5")
 AWS_REGION = os.environ.get("AWS_REGION", "eu-west-1")
 
-# Prompt de sistema: fija el rol y el formato de salida (JSON) del asistente.
+# Prompt de sistema: rol + reglas críticas (fidelidad, neutralidad, JSON estricto).
 SYSTEM_PROMPT = (
-    "Eres el asistente editorial de NewsNow, un periódico digital. "
-    "Resumes noticias de forma fiel, neutral y concisa en español. "
-    "CRUCIAL: No inventas datos que no estén en el texto. "
-    "Respondes SIEMPRE en JSON válido y estructurado, con las claves solicitadas."
+    "Eres el asistente editorial de NewsNow, un periódico digital. Tu tarea es "
+    "resumir noticias en español de forma fiel, neutral y concisa.\n"
+    "Reglas críticas:\n"
+    "- FIDELIDAD: no inventes NADA. No añadas datos, cifras, nombres ni fechas que "
+    "no aparezcan en el texto original; si un dato no está, omítelo.\n"
+    "- NEUTRALIDAD: tono informativo, sin opiniones, adjetivos valorativos ni signos "
+    "de exclamación.\n"
+    "- FORMATO: responde ÚNICAMENTE con un JSON válido y con las claves solicitadas. "
+    "Nada de markdown, bloques de código ni texto antes o después del JSON."
 )
 
 
 def _build_summary_prompt(title: str, body: str) -> str:
     return (
-        "Resume la siguiente noticia.\n"
-        "Devuelve un JSON con exactamente estas claves:\n"
-        '  - "headline": un titular alternativo breve (máx. 12 palabras)\n'
-        '  - "summary": resumen de 2-3 frases (máx. 60 palabras)\n'
-        '  - "tags": lista de 3-5 etiquetas temáticas en minúscula\n\n'
+        "Resume la siguiente noticia respetando las reglas del sistema.\n\n"
+        "Devuelve un objeto JSON con EXACTAMENTE estas tres claves:\n"
+        '  - "headline": titular alternativo, claro y neutral (máx. 12 palabras).\n'
+        '  - "summary": resumen de 2-3 frases, máx. 60 palabras, fiel al texto.\n'
+        '  - "tags": lista de 3 a 5 etiquetas temáticas en minúscula.\n\n'
+        "Formato de salida (solo la forma, no el contenido):\n"
+        '{"headline": "...", "summary": "...", "tags": ["...", "..."]}\n\n'
         f"TÍTULO: {title}\n\n"
         f"CUERPO:\n{body}\n"
     )
@@ -40,13 +47,15 @@ def _build_daily_prompt(items: list[dict]) -> str:
         for it in items
     )
     return (
-        "A partir de los resúmenes de las noticias de hoy, redacta el resumen "
-        "diario de NewsNow.\n"
-        "Devuelve un JSON con estas claves:\n"
-        '  - "intro": frase de apertura del boletín (1 frase)\n'
-        '  - "highlights": lista de 3-5 titulares destacados del día\n'
-        '  - "digest": párrafo de 4-6 frases que sintetice la jornada\n\n'
-        f"NOTICIAS DE HOY:\n{bloques}\n"
+        "Redacta el resumen diario (boletín) de NewsNow SINTETIZANDO únicamente los "
+        "resúmenes que se listan abajo. No añadas información que no esté en ellos.\n\n"
+        "Devuelve un objeto JSON con EXACTAMENTE estas tres claves:\n"
+        '  - "intro": una frase de apertura del boletín.\n'
+        '  - "highlights": lista de 3 a 5 titulares destacados del día.\n'
+        '  - "digest": párrafo de 4-6 frases que sintetice la jornada.\n\n'
+        "Formato de salida (solo la forma, no el contenido):\n"
+        '{"intro": "...", "highlights": ["...", "..."], "digest": "..."}\n\n'
+        f"RESÚMENES DE HOY:\n{bloques}\n"
     )
 
 
@@ -58,7 +67,7 @@ def _invoke_bedrock(system: str, user_prompt: str, max_tokens: int = 512) -> str
         # constante fija de la Messages API en Bedrock (no es una fecha que actualizar)
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": max_tokens,
-        "temperature": 0.2,  # baja = más fiel al texto
+        "temperature": 0.1,  # muy baja: prioriza la fidelidad al texto sobre la creatividad
         "system": system,
         "messages": [{"role": "user", "content": user_prompt}],
     }

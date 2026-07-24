@@ -1,8 +1,9 @@
 # Diagrama de arquitectura — Infraestructura
 
 > Diagrama en **Mermaid** (se renderiza directamente en GitHub/GitLab/VS Code y es
-> versionable en Git). En la entrega se incluye también export a imagen.
-> Se puede reconstruir en [draw.io](https://draw.io) importando este mismo grafo.
+> versionable en Git). La versión **draw.io** que sugiere el enunciado está en
+> [`newsnow-arquitectura.drawio`](newsnow-arquitectura.drawio) → página *Infraestructura*
+> (ábrela en [draw.io](https://draw.io) / diagrams.net).
 
 ```mermaid
 flowchart TB

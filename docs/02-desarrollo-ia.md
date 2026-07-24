@@ -69,7 +69,7 @@ DynamoDB (`GSI1PK = DATE#yyyy-mm-dd`), que devuelve los artículos de la jornada
    el idioma, el tono neutral y la **fidelidad a la fuente**. El *user
    prompt* pide una **salida estructurada en JSON** (`headline`, `summary`, `tags`)
    para poder guardarla y renderizarla directamente.
-4. **Parámetros del modelo:** `temperature` baja (0.2) para resúmenes fieles y
+4. **Parámetros del modelo:** `temperature` muy baja (0.1) para resúmenes fieles y
    estables; `max_tokens` acotado para controlar coste y longitud.
 5. **Post-proceso:** se parsea el JSON (con extracción defensiva por si el modelo lo
    envuelve en texto) y se persiste el resumen en DynamoDB (`SK = SUMMARY`).
