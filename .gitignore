@@ -13,6 +13,7 @@ __pycache__/
 venv/
 .pytest_cache/
 .ruff_cache/
+pytest-report.xml
 
 # Artefactos / material que no va al repo
 *.zip
