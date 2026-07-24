@@ -1,5 +1,7 @@
 # NewsNow — Caso Práctico Cloud AI Engineer
 
+[![CI](https://github.com/JMMAILabs/NewsNow/actions/workflows/ci.yml/badge.svg)](https://github.com/JMMAILabs/NewsNow/actions/workflows/ci.yml)
+
 Solución completa al caso práctico de **NewsNow**, un MVP para servir noticias con
 un panel de administración autenticado y un asistente de IA que resume noticias
 individuales y genera un resumen diario.

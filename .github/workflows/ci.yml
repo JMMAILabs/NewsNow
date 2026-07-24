@@ -9,13 +9,13 @@ permissions:
   contents: read
 
 jobs:
-  # -------- Python: lint + tests (sin AWS) --------
+  # ---- Python: lint + tests (sin AWS) ----
   python:
     name: Python (ruff + pytest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Instalar dependencias
@@ -23,24 +23,49 @@ jobs:
       - name: Ruff (lint)
         run: ruff check ai backend tests
       - name: Pytest
-        run: pytest -q
+        run: pytest -q --junitxml=pytest-report.xml
+      - name: Resumen en la página del run
+        if: success()
+        run: |
+          {
+            echo "## ✅ Python"
+            echo ""
+            echo "- **ruff**: sin errores de lint"
+            echo "- **pytest**: tests en verde (reporte JUnit en los *Artifacts*)"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Subir reporte de tests (JUnit)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pytest-report
+          path: pytest-report.xml
 
-  # -------- Terraform: formato + validate + tflint (sin AWS) --------
+  # ---- Terraform: formato + validate + tflint (sin AWS) ----
   terraform:
     name: Terraform (fmt + validate + tflint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
       - name: Formato
         run: terraform -chdir=terraform fmt -check -recursive
       - name: Init (sin backend, solo providers)
         run: terraform -chdir=terraform init -backend=false
       - name: Validate
-        run: terraform -chdir=terraform validate
-      - uses: terraform-linters/setup-tflint@v4
+        run: terraform -chdir=terraform validate -no-color
+      - uses: terraform-linters/setup-tflint@v6
       - name: TFLint
         run: tflint --chdir=terraform
+      - name: Resumen en la página del run
+        if: success()
+        run: |
+          {
+            echo "## ✅ Terraform"
+            echo ""
+            echo "- **fmt**: formateado"
+            echo "- **validate**: configuración válida"
+            echo "- **tflint**: sin issues"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ---- terraform plan contra AWS (OPCIONAL) ----
   # Solo corre si defines la variable de repo ENABLE_TF_PLAN=true y el secret
@@ -54,11 +79,11 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: eu-west-1
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
       - run: terraform -chdir=terraform init
       - run: terraform -chdir=terraform plan
