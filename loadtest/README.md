@@ -4,8 +4,7 @@ Validan la **escalabilidad real** del sistema: cómo se comporta la latencia (p9
 el % de error cuando el tráfico sube de golpe (contenido viral / influencers).
 
 > ⚠️ El generador de carga corre en tu máquina, pero **apunta al API ya desplegado**
-> en AWS. El autoscaling (Lambda, DynamoDB on-demand, CloudFront) es de AWS: no se
-> prueba en local. Los *unit tests* (`tests/`) verifican las propiedades que
+> en AWS. El autoscaling (Lambda, DynamoDB on-demand, CloudFront) es de AWS. Los *unit tests* (`tests/`) verifican las propiedades que
 > **habilitan** escalar (idempotencia, batch, statelessness); la **escala real** se
 > mide con esta prueba de carga contra el endpoint desplegado.
 

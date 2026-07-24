@@ -1,0 +1,61 @@
+import { useEffect, useState } from "react";
+import { getArticles, getDailySummary } from "./api";
+
+export default function App() {
+  const [articles, setArticles] = useState([]);
+  const [daily, setDaily] = useState(null);
+  const [mock, setMock] = useState(false);
+
+  useEffect(() => {
+    getArticles().then((r) => {
+      setArticles(r.articles);
+      setMock((m) => m || r.mock);
+    });
+    getDailySummary().then((r) => {
+      setDaily(r.daily);
+      setMock((m) => m || r.mock);
+    });
+  }, []);
+
+  return (
+    <div className="app">
+      <header className="site-header">
+        <h1>
+          News<span>Now</span>
+        </h1>
+        <p>Las noticias del día, resumidas por IA.</p>
+        {mock && <span className="badge">datos de ejemplo · sin API conectada</span>}
+      </header>
+
+      {daily && (
+        <section className="daily">
+          <h2>🗞️ Resumen del día</h2>
+          <p className="intro">{daily.intro}</p>
+          <ul>
+            {(daily.highlights || []).map((h, i) => (
+              <li key={i}>{h}</li>
+            ))}
+          </ul>
+          <p className="digest">{daily.digest}</p>
+        </section>
+      )}
+
+      <main className="grid">
+        {articles.map((a) => (
+          <article key={a.id} className="card">
+            <span className="cat">{a.category}</span>
+            <h3>{a.title}</h3>
+            <p>{a.summary || a.body}</p>
+            <div className="tags">
+              {(a.tags || []).map((t) => (
+                <span key={t}>#{t}</span>
+              ))}
+            </div>
+          </article>
+        ))}
+      </main>
+
+      <footer className="site-footer">NewsNow · MVP · servido desde S3 + CloudFront</footer>
+    </div>
+  );
+}

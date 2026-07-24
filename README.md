@@ -47,6 +47,12 @@ CasoPractico_Logicalis/
 │   ├── bedrock_client.py          ← Cliente Bedrock (+ fallback mock)
 │   └── requirements.txt
 │
+├── frontend/                      ← 2 apps React estáticas (Vite)
+│   ├── public-web/                ← Web pública (portada + resumen diario)
+│   └── admin-web/                 ← Panel admin (login + CRUD)
+│
+├── loadtest/                      ← Prueba de carga con k6
+│
 └── tests/                         ← pytest: idempotencia, batch, parseo JSON
 ```
 
