@@ -74,49 +74,43 @@ cada fase indica qué se generó con IA, qué se **verificó** y qué se **corri
 3. **Terraform real.** Instalé Terraform (winget), `terraform validate` → **Success** y
    `terraform fmt`. Confirmado que valida **sin credenciales AWS**.
 
-4. **Modelo y dudas técnicas.** Modelo por defecto **Claude Haiku 4.5** y verificado que
-   `anthropic_version: "bedrock-2023-05-31"` **no es una fecha a actualizar**, sino la
-   constante fija de la Messages API en Bedrock (anotado en el código).
+4. **Modelo y dudas técnicas.** Modelo por defecto **Claude Haiku 4.5**.
 
 5. **Validación con modelo real (coste 0).** Monté en **PartyRock** las dos apps
    (resumen individual y boletín diario *map-reduce*) con Claude a temperatura 0; salida
    JSON limpia y fiel. Capturas en `docs/assets/`.
 
-6. **Acabado "human-in-the-loop" del código.** Quité los banners decorativos idénticos y
-   los docstrings uniformes propios de la IA, varié la densidad de comentarios y añadí
-   notas pragmáticas reales (`TODO` de paginación, nota `N+1 → BatchGetItem`). De paso
-   corregí un comentario que no casaba con el código.
 
-7. **Calidad y automatización.** **Tests** (pytest: idempotencia, batch, parseo JSON),
+6. **Calidad y automatización.** **Tests** (pytest: idempotencia, batch, parseo JSON),
    **CI** (GitHub Actions: ruff + pytest + terraform validate + tflint), `pyproject.toml`
    y `Makefile`. Todo en verde en local.
 
-8. **Quick wins de infraestructura** (revalidados con `terraform validate` / `tflint`):
+7. **Quick wins de infraestructura** (revalidados con `terraform validate` / `tflint`):
    `ReportBatchItemFailures` (fallos parciales de batch), Lambdas en **ARM64**, retención
    de logs, quitado el permiso `dynamodb:Scan` no usado, S3 con *public-access-block* +
    cifrado, y DLQ/retry en el Scheduler diario.
 
-9. **Publicación y CI.** Subí el repo a GitHub; el CI salió verde. Corregí los avisos de
+8. **Publicación y CI.** Subí el repo a GitHub; el CI salió verde. Corregí los avisos de
    deprecación de Node 20 subiendo las *actions* a su última versión y añadí reporte
    JUnit descargable + *badge*.
 
-10. **Prueba de carga.** Script **k6** (perfil "pico de influencer") con *smoke* local
-    contra un mock (p95 8 ms, 0 errores). El mock monohilo se saturaba bajo carga —justo
+9. **Prueba de carga.** Script **k6** (perfil "pico de influencer") con *smoke* local
+    contra un mock (p95 8 ms, 0 errores). El mock monohilo se saturaba bajo carga; justo
     la tesis del ejercicio: un servidor plano no escala; por eso serverless.
 
-11. **Frontend.** Dos SPAs React (Vite): web pública + panel admin, con *fallback mock*.
+10. **Frontend.** Dos SPAs React (Vite): web pública + panel admin, con *fallback mock*.
     `npm run build` verificado; **corregí una vulnerabilidad** del dev server de esbuild
     subiendo a **Vite 8**; añadí un job de frontend al CI.
 
-12. **Afinado de prompts.** Reforcé la **fidelidad** (no inventar; omitir dato ausente),
+11. **Afinado de prompts.** Reforcé la **fidelidad** (no inventar; omitir dato ausente),
     la neutralidad y el **JSON estricto** (sin markdown), con ejemplo de formato. Añadí
     *tests de contrato del prompt* que fallan si se borran esas instrucciones.
 
-13. **Diagramas draw.io.** Convertí los diagramas Mermaid al formato **draw.io** que
+12. **Diagramas draw.io.** Construí el diagrama con el formato **draw.io** que
     sugiere el enunciado (`docs/diagrams/newsnow-arquitectura.drawio`).
 
 > **Mi aportación** en todo esto: las decisiones, el criterio de qué es testeable y qué
-> no (escalabilidad = prueba de carga real, no *unit tests*), atrapar los desajustes
+> no, atrapar los desajustes
 > (encoding, comentario erróneo, permiso de más, vulnerabilidad) y **ejecutar y verificar**
 > cada cambio en lugar de confiar a ciegas.
 
@@ -125,6 +119,6 @@ cada fase indica qué se generó con IA, qué se **verificó** y qué se **corri
 ## Resumen honesto
 
 La IA me ha permitido entregar una solución **más completa y en menos tiempo**:
-infraestructura como código, backend, prototipo de IA funcional y documentación. El
+infraestructura como código, backend, frontend, prototipo de IA funcional y documentación. El
 valor añadido de mi trabajo está en las **decisiones de arquitectura, la coherencia
 del conjunto, la adecuación al enunciado y la verificación de que todo funciona**.

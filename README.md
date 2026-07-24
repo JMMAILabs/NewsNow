@@ -102,19 +102,26 @@ CasoPractico_Logicalis/
 
 ---
 
-## 🚀 Cómo desplegar (resumen)
+## 🚀 Cómo desplegar y probar (resumen)
 
 ```bash
+# Atajos (Makefile), equivalentes a los comandos de abajo:
+make test        # tests (pytest)
+make validate    # valida el Terraform (sin credenciales AWS)
+make run         # prototipo de IA en local (modo mock si no hay AWS)
+
 # 1. Infraestructura
 cd terraform
 terraform init
 terraform plan  -var-file=terraform.tfvars
 terraform apply -var-file=terraform.tfvars
 
-# 2. Probar el prototipo de IA en local
-cd ../ai
-pip install -r requirements.txt
-python prototype.py            # demo end-to-end sin AWS (usa mock si no hay credenciales)
+# 2. Prototipo de IA en local (sin AWS → usa el modo mock)
+cd ../ai && pip install -r requirements.txt && python prototype.py
+
+# 3. Webs React (Vite) en local
+cd ../frontend/public-web && npm install && npm run dev   # http://localhost:5173
+cd ../admin-web           && npm install && npm run dev   # http://localhost:5174
 ```
 
 Detalles completos en cada documento de la carpeta [`docs/`](docs/).
