@@ -67,6 +67,26 @@ jobs:
             echo "- **tflint**: sin issues"
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # ---- Frontend: build de las 2 apps React (sin AWS) ----
+  frontend:
+    name: Frontend (build ${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [public-web, admin-web]
+    defaults:
+      run:
+        working-directory: frontend/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Build
+        run: npm run build
+
   # ---- terraform plan contra AWS (OPCIONAL) ----
   # Solo corre si defines la variable de repo ENABLE_TF_PLAN=true y el secret
   # AWS_ROLE_ARN (rol IAM asumido por OIDC). Sin eso, este job se salta y el
