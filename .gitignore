@@ -1,0 +1,23 @@
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/build/
+*.tfstate
+*.tfstate.*
+terraform/terraform.tfvars
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Artefactos / material que no va al repo
+*.zip
+Caso_Practico_Cloud_AI_Engineer_ESP.pdf
+
+# OS
+.DS_Store
+Thumbs.db

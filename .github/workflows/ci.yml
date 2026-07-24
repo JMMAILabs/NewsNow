@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # -------- Python: lint + tests (sin AWS) --------
+  python:
+    name: Python (ruff + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependencias
+        run: pip install boto3 pytest ruff
+      - name: Ruff (lint)
+        run: ruff check ai backend tests
+      - name: Pytest
+        run: pytest -q
+
+  # -------- Terraform: formato + validate + tflint (sin AWS) --------
+  terraform:
+    name: Terraform (fmt + validate + tflint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Formato
+        run: terraform -chdir=terraform fmt -check -recursive
+      - name: Init (sin backend, solo providers)
+        run: terraform -chdir=terraform init -backend=false
+      - name: Validate
+        run: terraform -chdir=terraform validate
+      - uses: terraform-linters/setup-tflint@v4
+      - name: TFLint
+        run: tflint --chdir=terraform
+
+  # ---- terraform plan contra AWS (OPCIONAL) ----
+  # Solo corre si defines la variable de repo ENABLE_TF_PLAN=true y el secret
+  # AWS_ROLE_ARN (rol IAM asumido por OIDC). Sin eso, este job se salta y el
+  # pipeline sale verde igualmente: no hace falta ninguna credencial para el CI.
+  plan:
+    name: Terraform plan (opcional, requiere AWS)
+    if: ${{ vars.ENABLE_TF_PLAN == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-west-1
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform -chdir=terraform init
+      - run: terraform -chdir=terraform plan

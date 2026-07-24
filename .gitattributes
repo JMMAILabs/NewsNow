@@ -1,0 +1,7 @@
+# Normaliza saltos de línea a LF en el repositorio (evita líos CRLF en CI/Linux).
+* text=auto eol=lf
+
+# Binarios: que git no toque los saltos de línea.
+*.png binary
+*.pdf binary
+*.zip binary

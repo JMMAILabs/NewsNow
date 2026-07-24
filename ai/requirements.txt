@@ -1,0 +1,3 @@
+# boto3 incluye el cliente de Bedrock Runtime. Ya viene en el runtime de Lambda;
+# se lista para ejecución local del prototipo.
+boto3>=1.34.0

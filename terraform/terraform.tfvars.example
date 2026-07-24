@@ -1,0 +1,14 @@
+# Copiar a terraform.tfvars y ajustar los valores.
+
+aws_region   = "eu-west-1"
+project_name = "newsnow"
+environment  = "dev"
+
+# Modelo de Bedrock para los resúmenes (requiere acceso habilitado en la consola
+# de Bedrock -> Model access). Haiku es rápido y barato para gran volumen.
+bedrock_model_id = "anthropic.claude-haiku-4-5"
+
+# Resumen diario a las 06:00 UTC.
+daily_summary_cron = "cron(0 6 * * ? *)"
+
+lambda_runtime = "python3.12"

@@ -1,0 +1,3 @@
+# boto3 ya viene incluido en el runtime de AWS Lambda; se lista para desarrollo
+# local y para fijar versión en el empaquetado.
+boto3>=1.34.0
