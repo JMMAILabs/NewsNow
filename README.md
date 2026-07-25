@@ -91,7 +91,7 @@ CasoPractico_Logicalis/
 | Autenticación del panel | **Amazon Cognito** | PaaS de identidad; emite JWT que valida el API |
 | API REST (Python) | **API Gateway (HTTP API) + Lambda** | 100% serverless, escala automático, pago por uso |
 | Base de datos | **DynamoDB (on-demand)** | Serverless, latencia de milisegundos, escala sola con el tráfico |
-| Media / imágenes | **S3** | Almacenamiento de objetos servido por CloudFront |
+| Media / imágenes | **S3** | Almacenamiento de objetos (servirlo por CloudFront queda como mejora de prod) |
 | IA (resúmenes) | **Amazon Bedrock (Claude)** | LLM gestionado; sin infraestructura de modelos |
 | Orquestación IA | **Lambda + SQS + EventBridge** | Desacopla la generación de resúmenes de las peticiones de usuario |
 | Observabilidad | **CloudWatch** | Logs, métricas y alarmas de todos los servicios |

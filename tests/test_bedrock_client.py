@@ -32,6 +32,7 @@ def test_parse_json_basura_no_revienta():
 
 
 def test_summarize_article_devuelve_las_claves(monkeypatch):
+    monkeypatch.setenv("NEWSNOW_ALLOW_MOCK", "1")
     monkeypatch.setattr(bc, "_invoke_bedrock", _sin_aws)
     out = bc.summarize_article("Titular", "Cuerpo de la noticia. Con dos frases.")
     assert set(out) >= {"headline", "summary", "tags"}
@@ -39,6 +40,7 @@ def test_summarize_article_devuelve_las_claves(monkeypatch):
 
 
 def test_summarize_day_devuelve_boletin(monkeypatch):
+    monkeypatch.setenv("NEWSNOW_ALLOW_MOCK", "1")
     monkeypatch.setattr(bc, "_invoke_bedrock", _sin_aws)
     items = [
         {"category": "tec", "headline": "h1", "summary": "resumen uno."},

@@ -63,12 +63,17 @@ def _today() -> str:
 # operaciones CRUD
 
 def list_articles(_event) -> dict:
-    """Portada: artículos publicados hoy (GSI por fecha, más recientes primero)."""
-    # MVP: solo el día de hoy. TODO: paginar / permitir un rango de fechas.
+    """Portada: los 50 artículos más recientes de hoy (GSI por fecha).
+
+    Acotamos con `Limit` para no traer el día entero de golpe (un `query` sin límite
+    devuelve hasta 1 MB y podría cortar en seco); la paginación al cliente vía cursor
+    `LastEvaluatedKey` queda como siguiente paso.
+    """
     result = _table.query(
         IndexName="GSI1-by-date",
         KeyConditionExpression=Key("GSI1PK").eq(f"DATE#{_today()}"),
         ScanIndexForward=False,
+        Limit=50,
     )
     items = [i for i in result.get("Items", []) if i.get("SK") == "META"]
     return _response(200, {"articles": items, "count": len(items)})
@@ -180,5 +185,7 @@ def lambda_handler(event, _context=None):
 
         return _response(404, {"error": f"route not found: {method} {path}"})
 
-    except Exception as exc:  # noqa: BLE001 — devolvemos 500 controlado
-        return _response(500, {"error": "internal error", "detail": str(exc)})
+    except Exception as exc:  # noqa: BLE001 — 500 controlado
+        # El detalle va al log (CloudWatch), nunca al cliente: evita fuga de info.
+        print(f"[api] error no controlado: {exc}")
+        return _response(500, {"error": "internal error"})

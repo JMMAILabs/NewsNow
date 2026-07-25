@@ -27,11 +27,17 @@ def _today() -> str:
 
 def _collect_summaries(date: str) -> list[dict]:
     """Une, por cada artículo del día, sus metadatos con su resumen."""
-    resp = _table.query(
-        IndexName="GSI1-by-date",
-        KeyConditionExpression=Key("GSI1PK").eq(f"DATE#{date}"),
-    )
+    # El boletín necesita TODOS los artículos del día → paginamos el query
+    # (un solo query devuelve hasta 1 MB; sin el bucle perderíamos artículos).
+    kwargs = {
+        "IndexName": "GSI1-by-date",
+        "KeyConditionExpression": Key("GSI1PK").eq(f"DATE#{date}"),
+    }
+    resp = _table.query(**kwargs)
     metas = [i for i in resp.get("Items", []) if i.get("SK") == "META"]
+    while resp.get("LastEvaluatedKey"):
+        resp = _table.query(**kwargs, ExclusiveStartKey=resp["LastEvaluatedKey"])
+        metas.extend(i for i in resp.get("Items", []) if i.get("SK") == "META")
 
     # N+1: un get_item por artículo. Para el MVP sobra; en prod usaría BatchGetItem.
     items = []

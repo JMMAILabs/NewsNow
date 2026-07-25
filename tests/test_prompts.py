@@ -21,6 +21,11 @@ def test_system_prompt_exige_json_sin_markdown():
     assert "markdown" in p  # prohíbe explícitamente markdown / bloques de código
 
 
+def test_system_prompt_defiende_de_prompt_injection():
+    p = bc.SYSTEM_PROMPT.lower()
+    assert "instrucciones" in p and "ignora" in p  # el cuerpo son datos, no órdenes
+
+
 def test_summary_prompt_pide_las_tres_claves():
     p = bc._build_summary_prompt("Un titular", "Un cuerpo de noticia.")
     for clave in ("headline", "summary", "tags"):

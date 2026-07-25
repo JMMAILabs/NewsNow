@@ -27,6 +27,10 @@ try:
 except Exception:  # noqa: BLE001 — entornos donde reconfigure no está disponible
     pass
 
+# El prototipo es una demo: si Bedrock no responde, cae al mock en vez de reventar.
+# (En las Lambdas de producción esto va en "false": los errores reales van a la DLQ.)
+os.environ.setdefault("NEWSNOW_ALLOW_MOCK", "1")
+
 # Noticias de ejemplo, como si acabaran de crearse en el panel de edición.
 ARTICLES = [
     {

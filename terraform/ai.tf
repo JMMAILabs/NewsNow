@@ -95,8 +95,9 @@ resource "aws_lambda_function" "summarize" {
 
   environment {
     variables = {
-      TABLE_NAME       = aws_dynamodb_table.content.name
-      BEDROCK_MODEL_ID = var.bedrock_model_id
+      TABLE_NAME         = aws_dynamodb_table.content.name
+      BEDROCK_MODEL_ID   = var.bedrock_model_id
+      NEWSNOW_ALLOW_MOCK = "false" # prod: nunca enmascarar un fallo de Bedrock con el mock
     }
   }
 }
@@ -154,8 +155,9 @@ resource "aws_lambda_function" "daily_summary" {
 
   environment {
     variables = {
-      TABLE_NAME       = aws_dynamodb_table.content.name
-      BEDROCK_MODEL_ID = var.bedrock_model_id
+      TABLE_NAME         = aws_dynamodb_table.content.name
+      BEDROCK_MODEL_ID   = var.bedrock_model_id
+      NEWSNOW_ALLOW_MOCK = "false" # prod: nunca enmascarar un fallo de Bedrock con el mock
     }
   }
 }

@@ -84,6 +84,8 @@ jobs:
           node-version: "22"
       - name: Instalar dependencias
         run: npm ci
+      - name: Auditoría de dependencias
+        run: npm audit --audit-level=high
       - name: Build
         run: npm run build
 

@@ -59,8 +59,9 @@ esos tokens de forma nativa (JWT authorizer), sin escribir lógica de auth propi
   consultas relacionales complejas. Para el MVP no hace falta y añade coste base;
   DynamoDB es más "serverless de verdad" (escala a cero).
 
-**e) Media → S3.** Las imágenes de los artículos van a un bucket S3 servido por
-CloudFront, igual que el resto de estáticos.
+**e) Media → S3.** Las imágenes de los artículos se almacenan en un bucket S3 privado
+(la Lambda conoce su nombre). **Servirlas por CloudFront es una mejora de producción**
+que no se ha cableado en el MVP (el foco es el flujo de artículos + IA).
 
 **f) Observabilidad → CloudWatch.** Logs, métricas y alarmas de todos los servicios
 gestionados de forma centralizada.

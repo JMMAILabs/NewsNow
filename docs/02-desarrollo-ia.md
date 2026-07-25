@@ -62,13 +62,15 @@ DynamoDB (`GSI1PK = DATE#yyyy-mm-dd`), que devuelve los artículos de la jornada
 
 1. **Extracción y limpieza:** se toma `title` + `body`. Se eliminaría HTML/ruido si
    el cuerpo viniera enriquecido (en el MVP es texto plano).
-2. **Control de tamaño:** si un artículo excede la ventana de contexto, se
-   **fragmenta (chunking)** y se resume por partes (map) antes de combinar (reduce).
-   Para noticias normales no hace falta.
+2. **Control de tamaño:** para noticias normales el cuerpo cabe en la ventana de
+   contexto (el MVP no hace nada especial). Si llegaran artículos muy largos, se
+   **fragmentarían (chunking)** y se resumirían por partes (map) antes de combinar
+   (reduce) — *pendiente, no implementado en el MVP*.
 3. **Prompt engineering:** un *system prompt* fija el rol (asistente editorial),
-   el idioma, el tono neutral y la **fidelidad a la fuente**. El *user
-   prompt* pide una **salida estructurada en JSON** (`headline`, `summary`, `tags`)
-   para poder guardarla y renderizarla directamente.
+   el idioma, el tono neutral, la **fidelidad a la fuente** y una defensa básica de
+   **prompt injection** (el cuerpo se trata como datos entre delimitadores, no como
+   instrucciones). El *user prompt* pide una **salida estructurada en JSON**
+   (`headline`, `summary`, `tags`) para guardarla y renderizarla directamente.
 4. **Parámetros del modelo:** `temperature` muy baja (0.1) para resúmenes fieles y
    estables; `max_tokens` acotado para controlar coste y longitud.
 5. **Post-proceso:** se parsea el JSON (con extracción defensiva por si el modelo lo
@@ -88,7 +90,9 @@ Todo esto está implementado en [`../ai/bedrock_client.py`](../ai/bedrock_client
   Resume 3 noticias de ejemplo y genera el resumen diario.
 - [`bedrock_client.py`](../ai/bedrock_client.py) — cliente de Bedrock (Claude) con
   *prompts*, control de parámetros y parseo de salida. Incluye **fallback mock**
-  (resumen extractivo) para ejecutarse **sin credenciales AWS**.
+  (resumen extractivo) para ejecutarse **sin credenciales AWS**. En las Lambdas de
+  producción el mock se desactiva (`NEWSNOW_ALLOW_MOCK=false`): un fallo real de
+  Bedrock se propaga (reintento → DLQ) en vez de guardar un resumen falso.
 - [`summarize_article.py`](../ai/summarize_article.py) — Lambda del Flujo A.
 - [`daily_summary.py`](../ai/daily_summary.py) — Lambda del Flujo B.
 

@@ -43,3 +43,8 @@ aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
 En la demo el login es *mock* (cualquier credencial). En producción se sustituye por
 **Amazon Cognito** (User Pool ya provisionado en `terraform/auth.tf`): login → JWT →
 se envía en la cabecera `Authorization`, que el API valida con su *JWT authorizer*.
+
+> ⚠️ **Contra el API real:** la web pública (solo lectura) funciona apuntando
+> `VITE_API_URL` al API desplegado. El panel admin, en cambio, envía un token *mock*
+> que el *JWT authorizer* de Cognito **rechazaría (401)** en las escrituras — cablear
+> el login real de Cognito es el paso de producción pendiente.
