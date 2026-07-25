@@ -91,6 +91,26 @@ resource "aws_cloudfront_origin_access_control" "this" {
 locals {
   s3_origin_id_public = "s3-public-web"
   s3_origin_id_admin  = "s3-admin-web"
+  api_origin_id       = "api-gateway"
+}
+
+# Caché de edge para las LECTURAS públicas del API (TTL corto). Es la pieza clave
+# de la respuesta a "cómo gestionar grandes volúmenes de tráfico": ante contenido
+# viral, CloudFront responde /articles y /daily-summary desde el edge y el backend
+# solo ve una fracción de las peticiones (1 origen cada ~30 s por PoP).
+resource "aws_cloudfront_cache_policy" "api_short" {
+  name        = "${local.name_prefix}-api-short-ttl"
+  default_ttl = 30
+  min_ttl     = 0
+  max_ttl     = 60
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    enable_accept_encoding_gzip   = true
+    enable_accept_encoding_brotli = true
+    cookies_config { cookie_behavior = "none" }
+    headers_config { header_behavior = "none" }
+    query_strings_config { query_string_behavior = "all" }
+  }
 }
 
 # --- Web pública -------------------------------------------------------------
@@ -106,6 +126,19 @@ resource "aws_cloudfront_distribution" "public_web" {
     origin_access_control_id = aws_cloudfront_origin_access_control.this.id
   }
 
+  # Segundo origen: el API HTTP. Así la web pública y el API comparten dominio
+  # (mismo origen, sin CORS) y las lecturas se cachean en el edge.
+  origin {
+    domain_name = "${aws_apigatewayv2_api.http.id}.execute-api.${var.aws_region}.amazonaws.com"
+    origin_id   = local.api_origin_id
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
   default_cache_behavior {
     target_origin_id       = local.s3_origin_id_public
     viewer_protocol_policy = "redirect-to-https"
@@ -115,6 +148,28 @@ resource "aws_cloudfront_distribution" "public_web" {
 
     # Caché gestionada de AWS "CachingOptimized" — clave para absorber picos.
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  # Lecturas públicas del API cacheadas en el edge (TTL corto). Las escrituras
+  # (POST/PUT/DELETE) llevan JWT y van directas al API, no por este camino.
+  ordered_cache_behavior {
+    path_pattern           = "/articles*"
+    target_origin_id       = local.api_origin_id
+    viewer_protocol_policy = "https-only"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    cache_policy_id        = aws_cloudfront_cache_policy.api_short.id
+  }
+
+  ordered_cache_behavior {
+    path_pattern           = "/daily-summary*"
+    target_origin_id       = local.api_origin_id
+    viewer_protocol_policy = "https-only"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+    cache_policy_id        = aws_cloudfront_cache_policy.api_short.id
   }
 
   # SPA: cualquier ruta 403/404 devuelve index.html (routing en cliente).

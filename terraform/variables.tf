@@ -39,6 +39,18 @@ variable "lambda_runtime" {
   default     = "python3.12"
 }
 
+variable "summarize_reserved_concurrency" {
+  description = "Concurrencia reservada de la Lambda de resumen (tope de llamadas simultáneas a Bedrock ante picos)."
+  type        = number
+  default     = 10
+}
+
+variable "alarms_email" {
+  description = "Email para las alarmas de CloudWatch (vacío = sin suscripción; el topic SNS se crea igual)."
+  type        = string
+  default     = ""
+}
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
   suffix      = random_id.suffix.hex

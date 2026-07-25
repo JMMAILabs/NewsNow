@@ -4,18 +4,29 @@ import daily_summary as ds
 
 
 class FakeTable:
+    """Doble de la tabla + del recurso DynamoDB (query, batch_get_item, put_item).
+
+    `query` ignora el shard y devuelve siempre las filas META; como la Lambda hace
+    fan-in sobre 10 shards, el dedup por PK del código debe colapsarlas a las únicas.
+    """
+
     def __init__(self, items):
         self.by_key = {(i["PK"], i["SK"]): i for i in items}
         self._items = items
         self.written = []
 
     def query(self, **_kw):
-        # el fake ignora la condición: devuelve las filas META
         return {"Items": [i for i in self._items if i.get("SK") == "META"]}
 
-    def get_item(self, Key):
-        item = self.by_key.get((Key["PK"], Key["SK"]))
-        return {"Item": item} if item else {}
+    def batch_get_item(self, RequestItems):
+        table = next(iter(RequestItems))
+        keys = RequestItems[table]["Keys"]
+        found = [
+            self.by_key[(k["PK"], k["SK"])]
+            for k in keys
+            if (k["PK"], k["SK"]) in self.by_key
+        ]
+        return {"Responses": {table: found}}
 
     def put_item(self, Item):
         self.written.append(Item)
@@ -28,7 +39,9 @@ def test_genera_el_boletin(monkeypatch):
         {"PK": "ARTICLE#a2", "SK": "META", "title": "t2", "category": "eco"},
         {"PK": "ARTICLE#a2", "SK": "SUMMARY", "headline": "h2", "summary": "s2"},
     ]
-    monkeypatch.setattr(ds, "_table", FakeTable(items))
+    fake = FakeTable(items)
+    monkeypatch.setattr(ds, "_table", fake)
+    monkeypatch.setattr(ds, "_dynamodb", fake)  # batch_get_item vive en el recurso
     monkeypatch.setattr(
         ds, "summarize_day",
         lambda _its: {"intro": "i", "highlights": ["h1", "h2"], "digest": "d"},
@@ -43,6 +56,8 @@ def test_genera_el_boletin(monkeypatch):
 
 
 def test_dia_sin_articulos(monkeypatch):
-    monkeypatch.setattr(ds, "_table", FakeTable([]))
+    fake = FakeTable([])
+    monkeypatch.setattr(ds, "_table", fake)
+    monkeypatch.setattr(ds, "_dynamodb", fake)
     result = ds.lambda_handler({"date": "2026-07-24"})
     assert result["status"] == "empty"

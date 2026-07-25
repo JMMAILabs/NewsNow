@@ -18,6 +18,7 @@ y con arranque en frío bajo.
 
 import json
 import os
+import random
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -29,6 +30,15 @@ TABLE_NAME = os.environ.get("TABLE_NAME", "newsnow-dev-content")
 
 _dynamodb = boto3.resource("dynamodb")
 _table = _dynamodb.Table(TABLE_NAME)
+
+# Repartimos los artículos del día en varios shards del GSI (DATE#<fecha>#<shard>)
+# para no crear una hot partition bajo picos; al leer hacemos fan-in sobre todos.
+# DEBE COINCIDIR con ai/daily_summary.py.
+GSI_SHARDS = 10
+
+# DynamoDB limita cada item a 400 KB; acotamos el cuerpo con margen para no petar
+# con un 500 opaco en el PutItem.
+MAX_BODY_BYTES = 350_000
 
 
 # helpers
@@ -63,20 +73,26 @@ def _today() -> str:
 # operaciones CRUD
 
 def list_articles(_event) -> dict:
-    """Portada: los 50 artículos más recientes de hoy (GSI por fecha).
+    """Portada: los 50 artículos más recientes de hoy.
 
-    Acotamos con `Limit` para no traer el día entero de golpe (un `query` sin límite
-    devuelve hasta 1 MB y podría cortar en seco); la paginación al cliente vía cursor
-    `LastEvaluatedKey` queda como siguiente paso.
+    El GSI reparte el día en shards (DATE#<fecha>#<shard>) para evitar una hot
+    partition en picos, así que consultamos los shards (fan-in), deduplicamos por PK
+    y nos quedamos con los 50 más recientes por fecha.
     """
-    result = _table.query(
-        IndexName="GSI1-by-date",
-        KeyConditionExpression=Key("GSI1PK").eq(f"DATE#{_today()}"),
-        ScanIndexForward=False,
-        Limit=50,
-    )
-    items = [i for i in result.get("Items", []) if i.get("SK") == "META"]
-    return _response(200, {"articles": items, "count": len(items)})
+    today = _today()
+    items: dict[str, dict] = {}
+    for shard in range(GSI_SHARDS):
+        result = _table.query(
+            IndexName="GSI1-by-date",
+            KeyConditionExpression=Key("GSI1PK").eq(f"DATE#{today}#{shard}"),
+            ScanIndexForward=False,
+            Limit=50,
+        )
+        for i in result.get("Items", []):
+            if i.get("SK") == "META":
+                items[i["PK"]] = i
+    top = sorted(items.values(), key=lambda a: a.get("GSI1SK", ""), reverse=True)[:50]
+    return _response(200, {"articles": top, "count": len(top)})
 
 
 def get_article(article_id: str) -> dict:
@@ -107,6 +123,8 @@ def create_article(event) -> dict:
     body = json.loads(event.get("body") or "{}")
     if not body.get("title") or not body.get("body"):
         return _response(400, {"error": "'title' and 'body' are required"})
+    if len(body["body"].encode("utf-8")) > MAX_BODY_BYTES:
+        return _response(413, {"error": "'body' too large"})
 
     article_id = str(uuid.uuid4())
     now = _now_iso()
@@ -123,8 +141,8 @@ def create_article(event) -> dict:
         "status": "DRAFT",  # pasa a READY cuando la IA genera el resumen
         "created_at": now,
         "updated_at": now,
-        # Claves del GSI para consultar por fecha.
-        "GSI1PK": f"DATE#{today}",
+        # Claves del GSI para consultar por fecha (shard aleatorio → sin hot partition).
+        "GSI1PK": f"DATE#{today}#{random.randint(0, GSI_SHARDS - 1)}",  # noqa: S311
         "GSI1SK": now,
     }
     _table.put_item(Item=item)
@@ -140,10 +158,13 @@ def update_article(article_id: str, event) -> dict:
         return _response(404, {"error": "article not found"})
 
     body = json.loads(event.get("body") or "{}")
+    new_body = body.get("body", existing["body"])
+    if len(new_body.encode("utf-8")) > MAX_BODY_BYTES:
+        return _response(413, {"error": "'body' too large"})
     existing.update(
         {
             "title": body.get("title", existing["title"]),
-            "body": body.get("body", existing["body"]),
+            "body": new_body,
             "category": body.get("category", existing.get("category", "general")),
             "status": "DRAFT",  # al editar, se regenera el resumen
             "updated_at": _now_iso(),
@@ -155,6 +176,11 @@ def update_article(article_id: str, event) -> dict:
 
 def delete_article(article_id: str) -> dict:
     """Elimina el artículo y su resumen asociado."""
+    existing = _table.get_item(
+        Key={"PK": f"ARTICLE#{article_id}", "SK": "META"}
+    ).get("Item")
+    if not existing:
+        return _response(404, {"error": "article not found"})
     _table.delete_item(Key={"PK": f"ARTICLE#{article_id}", "SK": "META"})
     _table.delete_item(Key={"PK": f"ARTICLE#{article_id}", "SK": "SUMMARY"})
     return _response(200, {"id": article_id, "status": "deleted"})

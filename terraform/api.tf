@@ -161,6 +161,25 @@ resource "aws_cloudwatch_log_group" "api_gw" {
   retention_in_days = 14
 }
 
+# Permiso para que API Gateway pueda entregar los access logs a CloudWatch Logs.
+# (Sin este resource policy el `apply` del stage puede fallar al escribir logs.)
+data "aws_iam_policy_document" "api_gw_logs" {
+  statement {
+    effect    = "Allow"
+    actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = ["${aws_cloudwatch_log_group.api_gw.arn}:*"]
+    principals {
+      type        = "Service"
+      identifiers = ["apigateway.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_cloudwatch_log_resource_policy" "api_gw" {
+  policy_name     = "${local.name_prefix}-apigw-access-logs"
+  policy_document = data.aws_iam_policy_document.api_gw_logs.json
+}
+
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.http.id
   name        = "$default"

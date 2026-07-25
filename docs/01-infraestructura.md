@@ -88,11 +88,12 @@ dominio funcional:
 |---|---|
 | `providers.tf` | Provider AWS, versión, backend de estado |
 | `variables.tf` | Variables parametrizables (región, nombre de proyecto, entorno…) |
-| `frontend.tf` | 3 buckets S3 (web pública, admin, media) + 2 distribuciones CloudFront + OAC |
+| `frontend.tf` | 3 buckets S3 (web pública, admin, media) + 2 distribuciones CloudFront + OAC + **caché de edge del API** |
 | `auth.tf` | Cognito User Pool + App Client + dominio hosted UI |
 | `database.tf` | Tabla DynamoDB (on-demand) + GSI + Streams |
-| `api.tf` | API Gateway HTTP API + Lambda del backend + rutas + JWT authorizer |
-| `ai.tf` | Lambdas de IA + SQS + DLQ + EventBridge Scheduler + permisos Bedrock |
+| `api.tf` | API Gateway HTTP API + Lambda del backend + rutas + JWT authorizer + access logs |
+| `ai.tf` | Lambdas de IA + DLQ (SQS) + EventBridge Scheduler + permisos Bedrock |
+| `observability.tf` | SNS + alarmas de CloudWatch (errores Lambda, DLQ, 5xx del API) |
 | `outputs.tf` | URLs de CloudFront, endpoint del API, IDs de Cognito, etc. |
 
 Se asumen **redes abiertas**. Los IAM roles incluidos son los
@@ -113,35 +114,47 @@ terraform apply -var-file=terraform.tfvars
 La clave es que **casi todo el tráfico es de lectura de contenido estático**, y ese
 camino nunca toca un servidor. Estrategia por capas:
 
-**a) Caché en el edge.**
-CloudFront sirve la web pública y las imágenes desde cientos de puntos de presencia.
-En un pico de influencer, miles de lectores reciben la misma copia **cacheada** sin
-llegar al origen. Se cachea también la respuesta del API para las noticias públicas
-(con un TTL corto, ej: 30–60s) → el backend recibe una fracción mínima de las peticiones.
+**a) Caché en el edge (implementada).**
+CloudFront sirve la web pública desde cientos de puntos de presencia. En un pico de
+influencer, miles de lectores reciben la misma copia **cacheada** sin llegar al
+origen. Y **no solo el HTML**: la distribución pública lleva un **segundo origen (el
+API)** con *cache behaviors* para `/articles*` y `/daily-summary*` y un **TTL corto
+(30–60 s)** — así las lecturas públicas del API también se responden desde el edge y
+el backend recibe **una fracción mínima** de las peticiones. Está cableado en
+[`../terraform/frontend.tf`](../terraform/frontend.tf) (`aws_cloudfront_cache_policy.api_short`).
 
 **b) Cómputo elástico y sin servidores.**
 - **Lambda** escala automáticamente la concurrencia. Para latencia predecible en
-  picos se puede activar **provisioned concurrency** o **autoscaling** de la misma.
+  picos se puede activar **provisioned concurrency**. En sentido inverso, la Lambda de
+  IA lleva **concurrencia reservada** (tope) para no saturar Bedrock en un pico.
 - **API Gateway** tiene throttling configurable para proteger el backend y escala de
   forma transparente.
 
-**c) Datos que escalan solos.**
+**c) Datos que escalan solos (y sin *hot partition*).**
 - **DynamoDB on-demand** absorbe subidas bruscas de RPS sin planificar capacidad.
   Para lecturas muy intensas se añade **DAX** (caché en memoria, microsegundos).
-- Modelo de acceso por clave → sin *joins*.
+- **Reparto por shards en el GSI por fecha.** Si todos los artículos del día
+  compartieran la misma clave de partición (`DATE#hoy`), un pico concentraría lecturas
+  y escrituras en **una sola partición** (throttling). Por eso la clave es
+  `DATE#<fecha>#<shard>` (10 shards) y las lecturas hacen *fan-in* sobre todos. Así se
+  distribuye la carga y se evita el anti-patrón de *hot key*.
 
 **d) Desacople asíncrono.**
-La generación de resúmenes (IA) va por **SQS + Lambda**, no en la ruta de la petición
-del usuario. Un pico de creación de artículos se **encola y se procesa a su ritmo**,
-sin degradar la experiencia de lectura ni saturar Bedrock.
+La generación de resúmenes (IA) **no va en la ruta de la petición del usuario**: la
+dispara **DynamoDB Streams → Lambda** (con *batching* y reintentos, que ya amortiguan
+las ráfagas) y **SQS actúa como Dead Letter Queue** de los eventos que fallan. Un pico
+de creación de artículos se procesa a su ritmo, sin degradar la lectura ni saturar
+Bedrock (concurrencia reservada + reintentos adaptativos).
 
 **e) Alta disponibilidad por defecto.**
 Todos los servicios usados (S3, CloudFront, DynamoDB, Lambda, API Gateway) son
 **multi-AZ y regionales gestionados por AWS**; no hay un único punto de fallo que
 mantener.
 
-**f) Resiliencia.** Reintentos + *Dead Letter Queues* en las colas, y alarmas de
-CloudWatch sobre errores/latencia/throttling para reaccionar antes de que degrade.
+**f) Resiliencia.** Reintentos + *Dead Letter Queues*, y **alarmas de CloudWatch**
+(errores de Lambda, profundidad de la DLQ, 5xx del API) → **SNS**, cableadas en
+[`../terraform/observability.tf`](../terraform/observability.tf) para reaccionar antes
+de que degrade.
 
 > En resumen: **el contenido se sirve desde el CDN, el cómputo es elástico y de pago
 > por uso, la base de datos escala sola y el trabajo pesado se desacopla en colas.**
@@ -208,19 +221,20 @@ mejoras de bajo coste, y el resto se deja como **hoja de ruta consciente**.
 
 | Dimensión | Qué se ha hecho |
 |---|---|
-| **Seguridad** | *Least privilege*: se quitó `dynamodb:Scan` (no se usa) y se deja anotado atar `bedrock:InvokeModel` al ARN del modelo. Buckets S3 **privados** (`public_access_block`) + **cifrado SSE**. Escritura protegida por **JWT de Cognito**. |
-| **Resiliencia** | **Partial batch failures** (`ReportBatchItemFailures`) al consumir Streams: un registro malo no reprocesa el batch. **DLQ + reintentos** en la Lambda de resumen y en el Scheduler diario. **PITR** en DynamoDB. |
-| **FinOps** | Lambdas en **ARM64/Graviton** (~20% más baratas). **Retención de logs** (14 días) para que no crezcan sin fin. **DynamoDB on-demand** para tráfico *spiky*. **Haiku** por defecto + **map-reduce**. **Tags** de coste. |
-| **Calidad** | **Tests** (pytest) de idempotencia/batch/parseo. **CI** con ruff + pytest + terraform validate + tflint. |
+| **Seguridad** | *Least privilege*: se quitó `dynamodb:Scan` (no se usa) y se deja anotado atar `bedrock:InvokeModel` al ARN del modelo. Buckets S3 **privados** (`public_access_block`) + **cifrado SSE**. Escritura protegida por **JWT de Cognito**. **Validación de tamaño** del cuerpo (evita 500 opacos) y **500 sin fuga de detalle** al cliente. |
+| **Resiliencia** | **Partial batch failures** (`ReportBatchItemFailures`) al consumir Streams. **DLQ + reintentos** en la Lambda de resumen y en el Scheduler. **PITR** en DynamoDB. **Concurrencia reservada** + **reintentos adaptativos** contra el *throttling* de Bedrock. **Alarmas CloudWatch → SNS** (errores, DLQ, 5xx). **Sin *hot partition*** (sharding del GSI). **Reduce jerárquico** en el boletín (no desborda el contexto a gran volumen). |
+| **Escalabilidad** | **Caché de edge del API** en CloudFront (TTL corto) para lecturas públicas. **BatchGetItem** en el boletín (en vez de N+1). |
+| **FinOps** | Lambdas en **ARM64/Graviton** (~20% más baratas). **Retención de logs** (14 días). **DynamoDB on-demand** para tráfico *spiky*. **Haiku** por defecto + **map-reduce**. **Tags** de coste. |
+| **Calidad** | **Tests** (pytest) de idempotencia/batch/parseo/*prompt injection*. **CI** con ruff + pytest + terraform validate + tflint + `npm audit`. |
 
 ### Hoja de ruta (producción)
 
 - **Seguridad:** WAF en CloudFront; *security headers* + TLS mínimo; CORS restringido a
   dominios reales; MFA + *advanced security* en Cognito; **KMS CMK** en S3/DynamoDB;
   escaneo de IaC (**Checkov/tfsec**) en el CI; secretos en Secrets Manager si aparecen.
-- **Resiliencia:** **alarmas CloudWatch** (errores, throttles, profundidad de DLQ) → SNS;
-  **retry/backoff** en el cliente de Bedrock ante *throttling*; **DAX** si las lecturas
-  aprietan; multi-región/DR según el RTO/RPO objetivo.
+- **Resiliencia:** **DAX** si las lecturas aprietan; multi-región/DR según el RTO/RPO
+  objetivo; *canary*/blue-green en los despliegues de Lambda. *(Alarmas SNS y
+  retry/backoff de Bedrock ya están incorporados arriba.)*
 - **FinOps:** **AWS Budgets** con alertas; **TTL** en DynamoDB para autoexpirar contenido
   viejo; **Lambda Power Tuning** para dimensionar memoria; si el tráfico se vuelve
   **predecible y alto**, comparar DynamoDB *provisioned + autoscaling* frente a on-demand.

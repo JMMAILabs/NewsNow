@@ -24,6 +24,12 @@ body {
   padding: 2rem 1.25rem 4rem;
 }
 
+.loading {
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 0;
+}
+
 .site-header {
   text-align: center;
   padding: 1.5rem 0 2rem;

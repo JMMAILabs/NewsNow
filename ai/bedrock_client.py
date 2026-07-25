@@ -65,8 +65,16 @@ def _build_daily_prompt(items: list[dict]) -> str:
 
 def _invoke_bedrock(system: str, user_prompt: str, max_tokens: int = 512) -> str:
     import boto3  # perezoso: solo si de verdad hay AWS delante
+    from botocore.config import Config
 
-    client = boto3.client("bedrock-runtime", region_name=AWS_REGION)
+    # Reintentos adaptativos: ante un pico, Bedrock puede lanzar ThrottlingException.
+    # El modo "adaptive" añade backoff exponencial + client-side rate limiting antes
+    # de dar el evento por fallido (y que acabe reintentándose vía DLQ).
+    client = boto3.client(
+        "bedrock-runtime",
+        region_name=AWS_REGION,
+        config=Config(retries={"max_attempts": 4, "mode": "adaptive"}),
+    )
     body = {
         # constante fija de la Messages API en Bedrock (no es una fecha que actualizar)
         "anthropic_version": "bedrock-2023-05-31",
@@ -167,8 +175,13 @@ def summarize_article(title: str, body: str) -> dict:
     return _parse_json(raw)
 
 
-def summarize_day(items: list[dict]) -> dict:
-    """Genera el resumen diario a partir de los resúmenes de cada artículo."""
+# Máximo de resúmenes por prompt de boletín. Si un día trae más, reducimos por
+# lotes y luego combinamos los digests parciales, para no desbordar la ventana de
+# contexto en días de mucho volumen (picos de publicación).
+_DAILY_BATCH = 15
+
+
+def _summarize_day_once(items: list[dict]) -> dict:
     prompt = _build_daily_prompt(items)
     try:
         raw = _invoke_bedrock(SYSTEM_PROMPT, prompt, max_tokens=800)
@@ -177,6 +190,31 @@ def summarize_day(items: list[dict]) -> dict:
             raise
         raw = _mock_daily(items)
     return _parse_json(raw)
+
+
+def summarize_day(items: list[dict]) -> dict:
+    """Genera el resumen diario a partir de los resúmenes de cada artículo.
+
+    Map-reduce jerárquico: con muchos resúmenes no caben en un solo prompt, así que
+    se reducen por lotes (map) y los digests parciales se combinan en una ronda
+    posterior (reduce), recursivamente, hasta que caben en una sola llamada.
+    """
+    if len(items) <= _DAILY_BATCH:
+        return _summarize_day_once(items)
+
+    parciales = []
+    for i in range(0, len(items), _DAILY_BATCH):
+        lote = items[i : i + _DAILY_BATCH]
+        digest = _summarize_day_once(lote)
+        # Cada digest parcial se trata como un "resumen" más en la ronda siguiente.
+        parciales.append(
+            {
+                "category": "resumen",
+                "headline": digest.get("intro", ""),
+                "summary": digest.get("digest", ""),
+            }
+        )
+    return summarize_day(parciales)
 
 
 def _parse_json(raw: str) -> dict:

@@ -16,8 +16,9 @@ gestionado, y en dos flujos serverless desacoplados:
 ┌─────────────────────────────────────────────────────────────────────┐
 │  FLUJO A — Resumen individual (event-driven, en tiempo casi real)     │
 │                                                                       │
-│  Editor crea/edita artículo → DynamoDB → Streams → (SQS) → Lambda    │
+│  Editor crea/edita artículo → DynamoDB → Streams → Lambda (reintentos)│
 │  → Bedrock (Claude) → guarda resumen + tags → artículo pasa a READY   │
+│  (los eventos que fallan tras reintentar van a una DLQ en SQS)        │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -34,12 +35,13 @@ gestionado, y en dos flujos serverless desacoplados:
   (PaaS), sin GPUs que operar, con varios modelos disponibles y facturación por
   token. Coherente con la estrategia "máximo PaaS" del enunciado.
 - **Event-driven para el resumen individual.** El editor no espera al LLM: guarda
-  el artículo y el resumen se genera en segundo plano. Se usa **DynamoDB Streams**
-  como disparador y una **cola (SQS)** como amortiguador ante ráfagas + reintentos
-  con *dead letter queue*.
-- **Map-reduce para el resumen diario.** Se reutilizan los resúmenes
-  ya generados en el Flujo A y se pide a Bedrock un *resumen de resúmenes*. Es la
-  técnica estándar para resumir grandes volúmenes de documentos.
+  el artículo y el resumen se genera en segundo plano. **DynamoDB Streams** dispara la
+  Lambda directamente (con *batching* y reintentos, que ya amortiguan las ráfagas); una
+  **cola SQS** actúa como *dead letter queue* para los eventos que fallan tras reintentar.
+- **Map-reduce jerárquico para el resumen diario.** Se reutilizan los resúmenes ya
+  generados en el Flujo A y se pide a Bedrock un *resumen de resúmenes*. Si un día trae
+  muchos artículos, se reduce **por lotes** y los digests parciales se combinan en una
+  ronda posterior (recursivo), para no desbordar la ventana de contexto.
 - **Modelo por defecto: Claude 4.5 Haiku.** Rápido y económico, suficiente para
   resúmenes de gran volumen. Parametrizable (`bedrock_model_id`) para subir a un
   modelo más potente si se necesita más calidad.
@@ -75,8 +77,10 @@ DynamoDB (`GSI1PK = DATE#yyyy-mm-dd`), que devuelve los artículos de la jornada
    estables; `max_tokens` acotado para controlar coste y longitud.
 5. **Post-proceso:** se parsea el JSON (con extracción defensiva por si el modelo lo
    envuelve en texto) y se persiste el resumen en DynamoDB (`SK = SUMMARY`).
-6. **Resumen diario (map-reduce):** se agregan los resúmenes del día y se pide un
-   digest con introducción, titulares destacados y párrafo de síntesis.
+6. **Resumen diario (map-reduce jerárquico):** se recuperan los resúmenes del día con
+   **BatchGetItem** (no un GetItem por artículo) y se pide un digest con introducción,
+   titulares y síntesis. Si hay muchos, se reduce por lotes y se combinan los digests
+   parciales, para no desbordar el contexto ni agotar el tiempo de la Lambda.
 
 Todo esto está implementado en [`../ai/bedrock_client.py`](../ai/bedrock_client.py).
 
@@ -149,7 +153,7 @@ prototipo se despliega tal cual:
 | `daily_summary.lambda_handler` | **AWS Lambda** | **EventBridge Scheduler** (cron diario) |
 | `bedrock_client` (LLM) | **Amazon Bedrock** | invocado por las Lambdas |
 | Persistencia | **DynamoDB** | — |
-| Amortiguación / reintentos | **SQS + DLQ** | — |
+| Reintentos / *dead letter* | **SQS (DLQ)** | — |
 
 Ya está **provisionado con Terraform** en
 [`../terraform/ai.tf`](../terraform/ai.tf): empaqueta el código de la carpeta `ai/`,
@@ -195,6 +199,16 @@ Distingo **rendimiento = calidad**, **latencia/throughput** y **coste**.
 - **Cachear** resúmenes y no regenerarlos si el artículo no cambió (hash del cuerpo).
 - **Acotar `max_tokens`** de entrada y salida.
 - **Batch inference** para trabajos no urgentes (hasta ~50% más barato).
+
+> 💰 **Estimación rápida (orden de magnitud).** Con **Haiku 4.5** y un artículo
+> típico (~800 tokens de entrada + ~200 de salida), un resumen ronda **fracciones de
+> céntimo**. Para **1.000 artículos/día** eso son **~1 $/día** en el Flujo A; el
+> boletín diario añade un puñado de llamadas más. Incluso multiplicando por un pico de
+> influencer, el coste de IA se mantiene en **decenas de dólares al mes** — dominado
+> por el volumen de publicación (que controlamos con concurrencia + caché de
+> resúmenes), no por las lecturas (que absorbe el CDN). *(Cifras aproximadas para
+> dimensionar, no una factura; conviene validar con la calculadora de AWS y el
+> precio vigente de Bedrock.)*
 
 > En una frase: **modelo adecuado a cada tarea, prompts estructurados y evaluados,
 > procesamiento asíncrono/por lotes, caching y map-reduce.** Así se mejora calidad,

@@ -5,16 +5,19 @@ export default function App() {
   const [articles, setArticles] = useState([]);
   const [daily, setDaily] = useState(null);
   const [mock, setMock] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getArticles().then((r) => {
-      setArticles(r.articles);
-      setMock((m) => m || r.mock);
-    });
-    getDailySummary().then((r) => {
-      setDaily(r.daily);
-      setMock((m) => m || r.mock);
-    });
+    Promise.all([
+      getArticles().then((r) => {
+        setArticles(r.articles);
+        setMock((m) => m || r.mock);
+      }),
+      getDailySummary().then((r) => {
+        setDaily(r.daily);
+        setMock((m) => m || r.mock);
+      }),
+    ]).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -26,6 +29,8 @@ export default function App() {
         <p>Las noticias del día, resumidas por IA.</p>
         {mock && <span className="badge">datos de ejemplo · sin API conectada</span>}
       </header>
+
+      {loading && <p className="loading">Cargando las noticias del día…</p>}
 
       {daily && (
         <section className="daily">

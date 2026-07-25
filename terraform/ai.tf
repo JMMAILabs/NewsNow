@@ -93,6 +93,10 @@ resource "aws_lambda_function" "summarize" {
   memory_size      = 512
   depends_on       = [aws_cloudwatch_log_group.summarize]
 
+  # Tope de concurrencia: ante un pico de publicación, evita abrir cientos de
+  # llamadas simultáneas a Bedrock (throttling) y protege su cuota de la cuenta.
+  reserved_concurrent_executions = var.summarize_reserved_concurrency
+
   environment {
     variables = {
       TABLE_NAME         = aws_dynamodb_table.content.name

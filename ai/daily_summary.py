@@ -18,33 +18,63 @@ from bedrock_client import summarize_day
 from boto3.dynamodb.conditions import Key
 
 TABLE_NAME = os.environ.get("TABLE_NAME", "newsnow-dev-content")
-_table = boto3.resource("dynamodb").Table(TABLE_NAME)
+_dynamodb = boto3.resource("dynamodb")
+_table = _dynamodb.Table(TABLE_NAME)
+
+# Nº de shards del GSI por fecha. DEBE COINCIDIR con backend/handler.py: los
+# artículos se reparten en DATE#<fecha>#<shard> para evitar una hot partition bajo
+# picos; al leer hacemos fan-in sobre todos los shards.
+GSI_SHARDS = 10
 
 
 def _today() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
+def _query_day_metas(date: str) -> list[dict]:
+    """Fan-in con paginación sobre todos los shards del GSI por fecha (deduplicado)."""
+    metas: dict[str, dict] = {}
+    for shard in range(GSI_SHARDS):
+        kwargs = {
+            "IndexName": "GSI1-by-date",
+            "KeyConditionExpression": Key("GSI1PK").eq(f"DATE#{date}#{shard}"),
+        }
+        resp = _table.query(**kwargs)
+        while True:
+            for item in resp.get("Items", []):
+                if item.get("SK") == "META":
+                    metas[item["PK"]] = item  # dedup por PK
+            if not resp.get("LastEvaluatedKey"):
+                break
+            resp = _table.query(**kwargs, ExclusiveStartKey=resp["LastEvaluatedKey"])
+    return list(metas.values())
+
+
+def _batch_get_summaries(pks: list[str]) -> dict[str, dict]:
+    """Trae los SUMMARY de varios artículos con BatchGetItem (máx. 100 por lote).
+
+    Evita el N+1 (un GetItem por artículo) que a gran volumen agotaría el tiempo
+    de la Lambda.
+    """
+    out: dict[str, dict] = {}
+    for i in range(0, len(pks), 100):
+        keys = [{"PK": pk, "SK": "SUMMARY"} for pk in pks[i : i + 100]]
+        resp = _dynamodb.batch_get_item(RequestItems={TABLE_NAME: {"Keys": keys}})
+        for item in resp.get("Responses", {}).get(TABLE_NAME, []):
+            out[item["PK"]] = item
+    return out
+
+
 def _collect_summaries(date: str) -> list[dict]:
     """Une, por cada artículo del día, sus metadatos con su resumen."""
-    # El boletín necesita TODOS los artículos del día → paginamos el query
-    # (un solo query devuelve hasta 1 MB; sin el bucle perderíamos artículos).
-    kwargs = {
-        "IndexName": "GSI1-by-date",
-        "KeyConditionExpression": Key("GSI1PK").eq(f"DATE#{date}"),
-    }
-    resp = _table.query(**kwargs)
-    metas = [i for i in resp.get("Items", []) if i.get("SK") == "META"]
-    while resp.get("LastEvaluatedKey"):
-        resp = _table.query(**kwargs, ExclusiveStartKey=resp["LastEvaluatedKey"])
-        metas.extend(i for i in resp.get("Items", []) if i.get("SK") == "META")
+    metas = _query_day_metas(date)
+    if not metas:
+        return []
 
-    # N+1: un get_item por artículo. Para el MVP sobra; en prod usaría BatchGetItem.
+    summaries = _batch_get_summaries([m["PK"] for m in metas])
     items = []
     for meta in metas:
-        summary = _table.get_item(
-            Key={"PK": meta["PK"], "SK": "SUMMARY"}
-        ).get("Item")
+        summary = summaries.get(meta["PK"])
         if summary:
             items.append(
                 {

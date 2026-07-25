@@ -41,8 +41,8 @@ flowchart TB
     end
 
     subgraph AI["🤖 Capa de IA"]
-        SQS["SQS<br/>(cola de resúmenes)"]
-        LambdaSum["Lambda<br/>resumen artículo"]
+        LambdaSum["Lambda<br/>resumen artículo<br/>(concurrencia reservada)"]
+        DLQ["SQS<br/>(Dead Letter Queue)"]
         EB["EventBridge Scheduler<br/>(cron diario)"]
         LambdaDaily["Lambda<br/>resumen diario"]
         Bedrock["Amazon Bedrock<br/>(Claude)"]
@@ -50,6 +50,7 @@ flowchart TB
 
     subgraph Obs["📊 Observabilidad"]
         CW["CloudWatch<br/>logs / métricas / alarmas"]
+        SNS["SNS<br/>alertas"]
     end
 
     Reader --> R53
@@ -70,7 +71,8 @@ flowchart TB
     LambdaAPI --> DAX --> DDB
     LambdaAPI --> S3media
 
-    DDB --> Streams --> SQS --> LambdaSum
+    DDB --> Streams --> LambdaSum
+    LambdaSum -. fallo tras reintentos .-> DLQ
     LambdaSum --> Bedrock
     LambdaSum --> DDB
 
@@ -83,22 +85,25 @@ flowchart TB
     LambdaSum -.-> CW
     LambdaDaily -.-> CW
     APIGW -.-> CW
+    CW --> SNS
 ```
 
 ## Flujo resumido
 
 1. **Lectura pública (el 95 % del tráfico).** El lector llega vía Route 53 →
-   CloudFront. La web React y las imágenes se sirven **desde la caché del CDN**,
-   sin tocar el origen. Las llamadas a la API para leer noticias también se cachean
-   en CloudFront/API Gateway. Esto es lo que absorbe los picos de influencers.
+   CloudFront. La web React se sirve **desde la caché del CDN**, sin tocar el origen. Y
+   las lecturas de la API (`/articles`, `/daily-summary`) van por un **segundo origen
+   de CloudFront con TTL corto**, así que también se responden desde el edge. Esto es lo
+   que absorbe los picos de influencers.
 
 2. **Escritura (panel admin).** El editor se autentica en **Cognito**, que emite un
    JWT. El panel React llama al **API Gateway**, que valida el token y ejecuta la
    **Lambda** del backend (CRUD sobre **DynamoDB** e imágenes en **S3**).
 
 3. **IA: resumen individual.** Al crear/editar un artículo, **DynamoDB Streams**
-   emite un evento → **SQS** (buffer que amortigua los picos) → **Lambda** que llama
-   a **Bedrock** y guarda el resumen en DynamoDB.
+   dispara directamente la **Lambda** (con *batching* y reintentos, que amortiguan los
+   picos), que llama a **Bedrock** y guarda el resumen en DynamoDB. Una cola **SQS** hace
+   de **DLQ** para los eventos que fallan tras reintentar.
 
 4. **IA: resumen diario.** **EventBridge Scheduler** dispara una Lambda cada día que
    recopila los artículos de la jornada, pide a **Bedrock** un digest y lo persiste.
