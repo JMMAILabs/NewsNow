@@ -25,7 +25,7 @@ gestionado, y en dos flujos serverless desacoplados:
 │  FLUJO B — Resumen diario (batch programado)                          │
 │                                                                       │
 │  EventBridge Scheduler (cron diario) → Lambda → lee los resúmenes     │
-│  del día (GSI por fecha) → Bedrock (map-reduce) → guarda el boletín   │
+│  de ayer (GSI por fecha) → Bedrock (map-reduce) → guarda el boletín   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -57,7 +57,9 @@ panel admin → API → **DynamoDB**. No dependemos de scraping externo. Cada ar
 es la **fuente de la verdad** y ya contiene el texto a resumir.
 
 Para el resumen diario, la obtención es una **consulta por fecha** al GSI de
-DynamoDB (`GSI1PK = DATE#yyyy-mm-dd`), que devuelve los artículos de la jornada.
+DynamoDB (`GSI1PK = DATE#yyyy-mm-dd#shard`, con *fan-in* sobre los shards), que
+devuelve los artículos de la **jornada anterior** (el cron corre de madrugada, así
+que resume el día ya completo, no el que acaba de empezar).
 
 
 ### Procesamiento (pipeline de resumen)

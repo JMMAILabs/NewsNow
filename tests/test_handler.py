@@ -69,6 +69,23 @@ def test_create_asigna_shard_en_el_gsi(monkeypatch):
     assert partes[0] == "DATE" and partes[2].isdigit()
 
 
+def test_daily_summary_lee_la_jornada_anterior(monkeypatch):
+    ayer = handler._yesterday()
+    fake = FakeTable()
+    fake.by_key[(f"DAILY#{ayer}", "SUMMARY")] = {
+        "PK": f"DAILY#{ayer}", "SK": "SUMMARY", "digest": "boletin de ayer",
+    }
+    monkeypatch.setattr(handler, "_table", fake)
+    resp = handler.get_daily_summary({})
+    assert resp["statusCode"] == 200
+    assert "ayer" in json.loads(resp["body"])["digest"]
+
+
+def test_daily_summary_404_si_no_esta(monkeypatch):
+    monkeypatch.setattr(handler, "_table", FakeTable())
+    assert handler.get_daily_summary({})["statusCode"] == 404
+
+
 def test_delete_inexistente_devuelve_404(monkeypatch):
     monkeypatch.setattr(handler, "_table", FakeTable())
     assert handler.delete_article("nope")["statusCode"] == 404

@@ -30,7 +30,8 @@ variable "bedrock_model_id" {
 variable "daily_summary_cron" {
   description = "Expresión cron (UTC) para el resumen diario de EventBridge."
   type        = string
-  default     = "cron(0 6 * * ? *)" # 06:00 UTC cada día
+  # 06:00 UTC de madrugada: el boletín resume la jornada ANTERIOR (ya completa).
+  default = "cron(0 6 * * ? *)"
 }
 
 variable "lambda_runtime" {

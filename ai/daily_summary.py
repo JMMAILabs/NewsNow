@@ -1,9 +1,10 @@
 """
 Lambda del resumen diario (el boletín).
 
-La dispara EventBridge Scheduler una vez al día. Junta los resúmenes de los
-artículos de la jornada (GSI por fecha), pide a Bedrock el digest y lo guarda
-como DAILY#<fecha>.
+La dispara EventBridge Scheduler cada madrugada. Junta los resúmenes de los
+artículos de la JORNADA ANTERIOR (GSI por fecha), pide a Bedrock el digest y lo
+guarda como DAILY#<fecha>. Se resume el día anterior porque el cron corre de
+madrugada: a esa hora el día en curso apenas tiene noticias.
 
 Map-reduce a propósito: no mandamos los cuerpos enteros (caro y no cabe en el
 contexto), sino los resúmenes ya calculados por la otra Lambda → resumen de
@@ -11,7 +12,7 @@ resúmenes.
 """
 
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import boto3
 from bedrock_client import summarize_day
@@ -27,8 +28,8 @@ _table = _dynamodb.Table(TABLE_NAME)
 GSI_SHARDS = int(os.environ.get("GSI_SHARDS", "10"))
 
 
-def _today() -> str:
-    return datetime.now(UTC).strftime("%Y-%m-%d")
+def _yesterday() -> str:
+    return (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
 def _query_day_metas(date: str) -> list[dict]:
@@ -93,7 +94,9 @@ def _collect_summaries(date: str) -> list[dict]:
 
 
 def lambda_handler(event=None, _context=None):
-    date = (event or {}).get("date") or _today()
+    # Por defecto, la jornada anterior (el cron corre de madrugada). Se puede pasar
+    # una fecha explícita en el evento para regenerar un día concreto (backfill).
+    date = (event or {}).get("date") or _yesterday()
     items = _collect_summaries(date)
 
     if not items:

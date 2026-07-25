@@ -44,8 +44,8 @@ sequenceDiagram
     participant DDB as DynamoDB
     participant BR as Bedrock (Claude)
 
-    EB->>L: cron diario (p.ej. 06:00 UTC)
-    L->>DDB: query GSI por fecha (fan-in sobre shards, paginado)
+    EB->>L: cron de madrugada (p.ej. 06:00 UTC)
+    L->>DDB: query GSI de la jornada ANTERIOR (fan-in sobre shards, paginado)
     L->>DDB: BatchGetItem de los resúmenes (evita N+1)
     L->>BR: prompt map-reduce (por lotes si hay muchos)
     BR-->>L: digest diario estructurado

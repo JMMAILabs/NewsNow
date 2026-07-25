@@ -20,7 +20,7 @@ import json
 import os
 import random
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import boto3
@@ -71,6 +71,10 @@ def _today() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%d")
 
 
+def _yesterday() -> str:
+    return (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+
 # operaciones CRUD
 
 def list_articles(_event) -> dict:
@@ -110,9 +114,9 @@ def get_article(article_id: str) -> dict:
 
 
 def get_daily_summary(_event) -> dict:
-    """Devuelve el resumen diario de hoy."""
+    """Devuelve el boletín de la jornada anterior (se genera cada madrugada)."""
     item = _table.get_item(
-        Key={"PK": f"DAILY#{_today()}", "SK": "SUMMARY"}
+        Key={"PK": f"DAILY#{_yesterday()}", "SK": "SUMMARY"}
     ).get("Item")
     if not item:
         return _response(404, {"error": "daily summary not available yet"})

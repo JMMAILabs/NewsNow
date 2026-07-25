@@ -55,6 +55,24 @@ def test_genera_el_boletin(monkeypatch):
     assert any(w["PK"] == "DAILY#2026-07-24" for w in table.written)
 
 
+def test_por_defecto_resume_la_jornada_anterior(monkeypatch):
+    items = [
+        {"PK": "ARTICLE#a1", "SK": "META", "title": "t1", "category": "tec"},
+        {"PK": "ARTICLE#a1", "SK": "SUMMARY", "headline": "h1", "summary": "s1"},
+    ]
+    fake = FakeTable(items)
+    monkeypatch.setattr(ds, "_table", fake)
+    monkeypatch.setattr(ds, "_dynamodb", fake)
+    monkeypatch.setattr(
+        ds, "summarize_day",
+        lambda _its: {"intro": "i", "highlights": [], "digest": "d"},
+    )
+
+    ds.lambda_handler()  # sin evento → debe resumir y guardar la jornada anterior
+
+    assert any(w["PK"] == f"DAILY#{ds._yesterday()}" for w in fake.written)
+
+
 def test_dia_sin_articulos(monkeypatch):
     fake = FakeTable([])
     monkeypatch.setattr(ds, "_table", fake)
