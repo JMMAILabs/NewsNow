@@ -5,9 +5,10 @@ Lambda que resuelve el CRUD de artículos sobre DynamoDB (diseño single-table).
 Se invoca desde API Gateway (HTTP API, payload v2.0).
 
 Rutas:
-    GET    /articles            → lista artículos publicados (portada)
+    GET    /articles            → portada: publicados (READY) + su resumen de IA
+    GET    /articles?view=admin → panel: todos los estados (incl. borradores) + cuerpo
     GET    /articles/{id}       → un artículo + su resumen
-    GET    /daily-summary       → resumen diario más reciente
+    GET    /daily-summary       → boletín de la jornada anterior
     POST   /articles            → crea artículo            (requiere JWT)
     PUT    /articles/{id}       → edita artículo           (requiere JWT)
     DELETE /articles/{id}       → elimina artículo         (requiere JWT)

@@ -79,8 +79,8 @@ que resume el día ya completo, no el que acaba de empezar).
    estables; `max_tokens` acotado para controlar coste y longitud.
 5. **Post-proceso:** se parsea el JSON (con extracción defensiva por si el modelo lo
    envuelve en texto) y se persiste el resumen en DynamoDB (`SK = SUMMARY`).
-6. **Resumen diario (map-reduce jerárquico):** se recuperan los resúmenes del día con
-   **BatchGetItem** (no un GetItem por artículo) y se pide un digest con introducción,
+6. **Resumen diario (map-reduce jerárquico):** se recuperan los resúmenes de esa jornada
+   con **BatchGetItem** (no un GetItem por artículo) y se pide un digest con introducción,
    titulares y síntesis. Si hay muchos, se reduce por lotes y se combinan los digests
    parciales, para no desbordar el contexto ni agotar el tiempo de la Lambda.
 

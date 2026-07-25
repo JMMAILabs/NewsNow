@@ -105,8 +105,9 @@ flowchart TB
    picos), que llama a **Bedrock** y guarda el resumen en DynamoDB. Una cola **SQS** hace
    de **DLQ** para los eventos que fallan tras reintentar.
 
-4. **IA: resumen diario.** **EventBridge Scheduler** dispara una Lambda cada día que
-   recopila los artículos de la jornada, pide a **Bedrock** un digest y lo persiste.
+4. **IA: resumen diario.** **EventBridge Scheduler** dispara una Lambda cada madrugada
+   que recopila los artículos de la **jornada anterior** (ya completa), pide a
+   **Bedrock** un digest y lo persiste.
 
 > **Nota de alcance:** **Route 53**, **WAF** y **DAX** aparecen como *estado objetivo* de
 > una arquitectura completa. El Terraform del MVP usa los **dominios por defecto de
