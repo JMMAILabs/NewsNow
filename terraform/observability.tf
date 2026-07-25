@@ -46,6 +46,41 @@ resource "aws_cloudwatch_metric_alarm" "summarize_dlq_depth" {
   treat_missing_data  = "notBreaching"
 }
 
+# --- Backlog del stream: el consumo se está quedando atrás --------------------
+# Con concurrencia reservada, un pico sostenido de publicación puede encolar más
+# rápido de lo que procesamos. Si el IteratorAge crece, hay que subir el tope de
+# concurrencia (o revisar Bedrock) antes de acercarnos a la retención del stream.
+resource "aws_cloudwatch_metric_alarm" "summarize_iterator_age" {
+  alarm_name          = "${local.name_prefix}-summarize-iterator-age"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "IteratorAge"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Maximum"
+  threshold           = 600000 # 10 min de retraso en el stream
+  alarm_description   = "El consumo del stream se retrasa (backlog): subir concurrencia reservada."
+  dimensions          = { FunctionName = aws_lambda_function.summarize.function_name }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+}
+
+# --- Throttling de la Lambda de resumen (techo de concurrencia reservada) -----
+resource "aws_cloudwatch_metric_alarm" "summarize_throttles" {
+  alarm_name          = "${local.name_prefix}-summarize-throttles"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "Throttles"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 0
+  alarm_description   = "La Lambda de resumen se throttlea contra su concurrencia reservada."
+  dimensions          = { FunctionName = aws_lambda_function.summarize.function_name }
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+  treat_missing_data  = "notBreaching"
+}
+
 # --- Errores 5xx del API -----------------------------------------------------
 resource "aws_cloudwatch_metric_alarm" "api_5xx" {
   alarm_name          = "${local.name_prefix}-api-5xx"

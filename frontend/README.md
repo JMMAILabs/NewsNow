@@ -9,9 +9,14 @@ carpeta `dist/` que se sube a **S3** y se sirve por **CloudFront** (ver
 | [`public-web/`](public-web/) | Web pública: portada de noticias + resumen diario. |
 | [`admin-web/`](admin-web/) | Panel con **login** + **CRUD** de artículos. |
 
-Ambas funcionan **sin backend** (fallback *mock*), para poder verlas en local. Para
-conectarlas al API real, define `VITE_API_URL` (output `api_endpoint` de Terraform)
-en un fichero `.env`.
+Ambas funcionan **sin backend** (fallback *mock*), para poder verlas en local.
+
+- **Web pública:** en producción se despliega en la **misma distribución de CloudFront**
+  que sirve el HTML, así que llama al API por el **mismo origen** (`/articles`,
+  `/daily-summary`) → CloudFront cachea esas lecturas en el edge. Por eso su build de
+  producción va **sin `VITE_API_URL`** (ver [`public-web/.env.example`](public-web/.env.example)).
+- **Panel admin:** su distribución no cachea el API; usa `VITE_API_URL` (output
+  `api_endpoint` de Terraform) para llamar a API Gateway con el JWT.
 
 ## Ejecutar en local
 
@@ -31,11 +36,18 @@ npm run preview             # sirve dist/ en local para revisarlo
 ## Despliegue (tras `terraform apply`)
 
 ```bash
-# en cada carpeta, apuntando al API desplegado:
+# WEB PÚBLICA — mismo origen (sin VITE_API_URL): CloudFront cachea las lecturas.
+cd public-web
+npm run build
+aws s3 sync dist/ s3://<bucket-public-web>          # buckets en los outputs de Terraform
+aws cloudfront create-invalidation --distribution-id <id-public> --paths "/*"
+
+# PANEL ADMIN — apunta al API Gateway (con JWT; sin caché).
+cd ../admin-web
 echo "VITE_API_URL=https://<api-id>.execute-api.eu-west-1.amazonaws.com" > .env
 npm run build
-aws s3 sync dist/ s3://<bucket>            # buckets en los outputs de Terraform
-aws cloudfront create-invalidation --distribution-id <id> --paths "/*"
+aws s3 sync dist/ s3://<bucket-admin-web>
+aws cloudfront create-invalidation --distribution-id <id-admin> --paths "/*"
 ```
 
 ## Nota sobre la autenticación (admin)

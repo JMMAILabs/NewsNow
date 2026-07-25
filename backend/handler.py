@@ -33,8 +33,9 @@ _table = _dynamodb.Table(TABLE_NAME)
 
 # Repartimos los artículos del día en varios shards del GSI (DATE#<fecha>#<shard>)
 # para no crear una hot partition bajo picos; al leer hacemos fan-in sobre todos.
-# DEBE COINCIDIR con ai/daily_summary.py.
-GSI_SHARDS = 10
+# Terraform inyecta el mismo valor (var.gsi_shards) aquí y en el resumen diario, así
+# ambos quedan sincronizados desde una única fuente (sin constantes que "deban coincidir").
+GSI_SHARDS = int(os.environ.get("GSI_SHARDS", "10"))
 
 # DynamoDB limita cada item a 400 KB; acotamos el cuerpo con margen para no petar
 # con un 500 opaco en el PutItem.

@@ -48,3 +48,21 @@ def test_summarize_day_devuelve_boletin(monkeypatch):
     ]
     out = bc.summarize_day(items)
     assert set(out) >= {"intro", "highlights", "digest"}
+
+
+def test_summarize_day_reduce_jerarquico(monkeypatch):
+    # Con más de _DAILY_BATCH ítems, se reduce por lotes y se combinan los digests
+    # parciales recursivamente → ninguna llamada recibe la lista entera de golpe.
+    llamadas = []
+
+    def _fake_once(items):
+        llamadas.append(len(items))
+        return {"intro": "i", "highlights": [], "digest": "d"}
+
+    monkeypatch.setattr(bc, "_summarize_day_once", _fake_once)
+    n = bc._DAILY_BATCH * 2  # 2 lotes en el map
+    out = bc.summarize_day([{"summary": f"s{i}"} for i in range(n)])
+
+    assert set(out) >= {"intro", "highlights", "digest"}
+    # 2 llamadas del map (un lote cada una) + 1 del reduce final sobre los 2 parciales
+    assert llamadas == [bc._DAILY_BATCH, bc._DAILY_BATCH, 2]

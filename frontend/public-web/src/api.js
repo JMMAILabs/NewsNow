@@ -1,5 +1,15 @@
-// Cliente del API público con fallback a datos de ejemplo (para verse sin backend).
-const API_URL = import.meta.env.VITE_API_URL || "";
+// Cliente del API público.
+// - Producción (build en S3+CloudFront): NO se define VITE_API_URL → se llama al
+//   MISMO origen (`/articles`, `/daily-summary`), que la distribución de CloudFront
+//   cachea en el edge (TTL corto). Así la portada absorbe los picos y el fan-in de
+//   los shards del GSI se sirve desde la caché, no golpea DynamoDB en cada request.
+// - `npm run dev` sin API: datos de ejemplo (mock), para ver la web sin backend.
+// - Se puede forzar una URL absoluta (VITE_API_URL, p. ej. contra API GW directo)
+//   o el mock (VITE_USE_MOCK=true).
+const API_BASE = import.meta.env.VITE_API_URL || "";
+const USE_MOCK =
+  import.meta.env.VITE_USE_MOCK === "true" ||
+  (import.meta.env.DEV && !import.meta.env.VITE_API_URL);
 
 const MOCK = {
   articles: [
@@ -49,13 +59,13 @@ const MOCK = {
 };
 
 async function getJSON(path, fallback) {
-  if (!API_URL) return { data: fallback, mock: true };
+  if (USE_MOCK) return { data: fallback, mock: true };
   try {
-    const res = await fetch(`${API_URL}${path}`);
+    const res = await fetch(`${API_BASE}${path}`);
     if (!res.ok) throw new Error(String(res.status));
     return { data: await res.json(), mock: false };
   } catch {
-    return { data: fallback, mock: true }; // sin backend o error → mock
+    return { data: fallback, mock: true }; // API caída o inaccesible → datos de ejemplo
   }
 }
 

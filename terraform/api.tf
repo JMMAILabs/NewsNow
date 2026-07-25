@@ -75,6 +75,7 @@ resource "aws_lambda_function" "api" {
     variables = {
       TABLE_NAME   = aws_dynamodb_table.content.name
       MEDIA_BUCKET = aws_s3_bucket.media.bucket
+      GSI_SHARDS   = tostring(var.gsi_shards)
     }
   }
 }

@@ -45,6 +45,12 @@ variable "summarize_reserved_concurrency" {
   default     = 10
 }
 
+variable "gsi_shards" {
+  description = "Nº de shards del GSI por fecha (reparte la escritura para evitar hot partition). Se inyecta al backend y al resumen diario para mantenerlos sincronizados."
+  type        = number
+  default     = 10
+}
+
 variable "alarms_email" {
   description = "Email para las alarmas de CloudWatch (vacío = sin suscripción; el topic SNS se crea igual)."
   type        = string

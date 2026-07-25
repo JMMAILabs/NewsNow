@@ -21,10 +21,10 @@ TABLE_NAME = os.environ.get("TABLE_NAME", "newsnow-dev-content")
 _dynamodb = boto3.resource("dynamodb")
 _table = _dynamodb.Table(TABLE_NAME)
 
-# Nº de shards del GSI por fecha. DEBE COINCIDIR con backend/handler.py: los
-# artículos se reparten en DATE#<fecha>#<shard> para evitar una hot partition bajo
-# picos; al leer hacemos fan-in sobre todos los shards.
-GSI_SHARDS = 10
+# Nº de shards del GSI por fecha (DATE#<fecha>#<shard>): reparte la escritura para
+# evitar una hot partition bajo picos; al leer hacemos fan-in sobre todos. Terraform
+# inyecta el mismo var.gsi_shards aquí y en el backend → una única fuente de verdad.
+GSI_SHARDS = int(os.environ.get("GSI_SHARDS", "10"))
 
 
 def _today() -> str:

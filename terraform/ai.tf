@@ -162,6 +162,7 @@ resource "aws_lambda_function" "daily_summary" {
       TABLE_NAME         = aws_dynamodb_table.content.name
       BEDROCK_MODEL_ID   = var.bedrock_model_id
       NEWSNOW_ALLOW_MOCK = "false" # prod: nunca enmascarar un fallo de Bedrock con el mock
+      GSI_SHARDS         = tostring(var.gsi_shards)
     }
   }
 }

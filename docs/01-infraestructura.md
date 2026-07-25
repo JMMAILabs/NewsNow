@@ -122,6 +122,10 @@ API)** con *cache behaviors* para `/articles*` y `/daily-summary*` y un **TTL co
 (30–60 s)** — así las lecturas públicas del API también se responden desde el edge y
 el backend recibe **una fracción mínima** de las peticiones. Está cableado en
 [`../terraform/frontend.tf`](../terraform/frontend.tf) (`aws_cloudfront_cache_policy.api_short`).
+La web pública llama a esas rutas por el **mismo origen** (su build va sin
+`VITE_API_URL`), de modo que la caché está **de verdad en el camino de la petición**:
+el *fan-in* sobre los shards del GSI (10 consultas por portada) se sirve desde el edge
+y **no golpea DynamoDB en cada carga**, solo una vez por PoP cada ventana de TTL.
 
 **b) Cómputo elástico y sin servidores.**
 - **Lambda** escala automáticamente la concurrencia. Para latencia predecible en
