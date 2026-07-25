@@ -77,15 +77,33 @@ def _yesterday() -> str:
 
 # operaciones CRUD
 
-def list_articles(_event) -> dict:
-    """Portada: los 50 artículos más recientes de hoy.
+def _batch_get_summaries(pks: list[str]) -> dict[str, dict]:
+    """SUMMARY de varios artículos con BatchGetItem (reintenta UnprocessedKeys)."""
+    out: dict[str, dict] = {}
+    for i in range(0, len(pks), 100):
+        keys = [{"PK": pk, "SK": "SUMMARY"} for pk in pks[i : i + 100]]
+        request = {TABLE_NAME: {"Keys": keys}}
+        while request:
+            resp = _dynamodb.batch_get_item(RequestItems=request)
+            for item in resp.get("Responses", {}).get(TABLE_NAME, []):
+                out[item["PK"]] = item
+            request = resp.get("UnprocessedKeys") or None
+    return out
 
-    El GSI reparte el día en shards (DATE#<fecha>#<shard>) para evitar una hot
-    partition en picos, así que consultamos los shards (fan-in), deduplicamos por PK
-    y nos quedamos con los 50 más recientes por fecha.
+
+def list_articles(event) -> dict:
+    """Artículos de hoy (fan-in sobre los shards del GSI, dedup + orden por fecha).
+
+    Dos vistas sobre el mismo endpoint:
+    - **pública** (por defecto): solo artículos **READY** y con su **resumen de IA**
+      (headline/summary/tags), sin el cuerpo → tarjetas de portada. Es la que cachea
+      CloudFront.
+    - **admin** (`?view=admin`): todos los estados, con cuerpo y `status`, para gestionar
+      los artículos desde el panel.
     """
+    view = (event.get("queryStringParameters") or {}).get("view", "public")
     today = _today()
-    items: dict[str, dict] = {}
+    metas: dict[str, dict] = {}
     for shard in range(GSI_SHARDS):
         result = _table.query(
             IndexName="GSI1-by-date",
@@ -95,9 +113,31 @@ def list_articles(_event) -> dict:
         )
         for i in result.get("Items", []):
             if i.get("SK") == "META":
-                items[i["PK"]] = i
-    top = sorted(items.values(), key=lambda a: a.get("GSI1SK", ""), reverse=True)[:50]
-    return _response(200, {"articles": top, "count": len(top)})
+                metas[i["PK"]] = i
+    ordered = sorted(metas.values(), key=lambda a: a.get("GSI1SK", ""), reverse=True)
+
+    if view == "admin":
+        top = ordered[:50]
+        return _response(200, {"articles": top, "count": len(top)})
+
+    # Vista pública: solo publicados (READY) + su resumen de IA, sin el cuerpo.
+    ready = [m for m in ordered if m.get("status") == "READY"][:50]
+    summaries = _batch_get_summaries([m["PK"] for m in ready])
+    articles = []
+    for meta in ready:
+        s = summaries.get(meta["PK"], {})
+        articles.append(
+            {
+                "id": meta.get("id"),
+                "title": meta.get("title"),
+                "category": meta.get("category", "general"),
+                "headline": s.get("headline"),
+                "summary": s.get("summary"),
+                "tags": s.get("tags", []),
+                "created_at": meta.get("created_at"),
+            }
+        )
+    return _response(200, {"articles": articles, "count": len(articles)})
 
 
 def get_article(article_id: str) -> dict:

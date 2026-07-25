@@ -23,6 +23,16 @@ class FakeTable:
     def query(self, **_kw):
         return {"Items": list(self.metas)}
 
+    def batch_get_item(self, RequestItems):
+        table = next(iter(RequestItems))
+        keys = RequestItems[table]["Keys"]
+        found = [
+            self.by_key[(k["PK"], k["SK"])]
+            for k in keys
+            if (k["PK"], k["SK"]) in self.by_key
+        ]
+        return {"Responses": {table: found}}
+
     def get_item(self, Key):
         item = self.by_key.get((Key["PK"], Key["SK"]))
         return {"Item": item} if item else {}
@@ -34,23 +44,46 @@ class FakeTable:
         self.deleted.append((Key["PK"], Key["SK"]))
 
 
-def _meta(article_id, ts):
+def _meta(article_id, ts, status="READY"):
     return {"PK": f"ARTICLE#{article_id}", "SK": "META", "id": article_id,
-            "title": article_id, "GSI1SK": ts}
+            "title": article_id, "body": "cuerpo", "category": "tec",
+            "status": status, "GSI1SK": ts}
 
 
-def test_portada_deduplica_y_ordena_por_fecha(monkeypatch):
+def _summary(article_id):
+    return {"PK": f"ARTICLE#{article_id}", "SK": "SUMMARY",
+            "headline": f"h-{article_id}", "summary": f"s-{article_id}", "tags": ["t"]}
+
+
+def test_portada_publica_solo_ready_con_resumen(monkeypatch):
+    items = [
+        _meta("a1", "2026-07-24T10:00:00"), _summary("a1"),
+        _meta("a2", "2026-07-24T12:00:00"), _summary("a2"),
+        _meta("a3", "2026-07-24T08:00:00", status="DRAFT"),  # borrador: no debe salir
+    ]
+    fake = FakeTable(items)
+    monkeypatch.setattr(handler, "_table", fake)
+    monkeypatch.setattr(handler, "_dynamodb", fake)  # BatchGetItem vive en el recurso
+
+    body = json.loads(handler.list_articles({})["body"])
+
+    assert [a["id"] for a in body["articles"]] == ["a2", "a1"]  # solo READY, por fecha
+    assert body["articles"][0]["summary"] == "s-a2"            # trae el resumen de IA
+    assert "body" not in body["articles"][0]                   # sin el cuerpo completo
+
+
+def test_vista_admin_incluye_borradores_y_status(monkeypatch):
     items = [
         _meta("a1", "2026-07-24T10:00:00"),
-        _meta("a2", "2026-07-24T12:00:00"),
-        _meta("a3", "2026-07-24T08:00:00"),
+        _meta("a2", "2026-07-24T12:00:00", status="DRAFT"),
     ]
     monkeypatch.setattr(handler, "_table", FakeTable(items))
-    body = json.loads(handler.list_articles({})["body"])
-    # pese al fan-in sobre los shards, cada artículo aparece una sola vez
-    assert body["count"] == 3
-    # y salen ordenados por fecha descendente (más reciente primero)
-    assert [a["id"] for a in body["articles"]] == ["a2", "a1", "a3"]
+    event = {"queryStringParameters": {"view": "admin"}}
+
+    body = json.loads(handler.list_articles(event)["body"])
+
+    assert sorted(a["id"] for a in body["articles"]) == ["a1", "a2"]  # incluye el borrador
+    assert any(a.get("status") == "DRAFT" for a in body["articles"])  # con su status
 
 
 def test_create_rechaza_cuerpo_demasiado_grande(monkeypatch):

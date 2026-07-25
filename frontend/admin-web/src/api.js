@@ -30,7 +30,8 @@ function headers(token, json = true) {
 export async function listArticles() {
   if (useMock()) return { articles: [...store], mock: true };
   try {
-    const res = await fetch(`${API_URL}/articles`);
+    // vista admin: todos los estados (incl. borradores) + cuerpo, para gestionarlos
+    const res = await fetch(`${API_URL}/articles?view=admin`);
     if (!res.ok) throw new Error(String(res.status));
     const data = await res.json();
     return { articles: data.articles || [], mock: false };
