@@ -125,13 +125,18 @@ resource "aws_lambda_event_source_mapping" "streams_to_summarize" {
     }
   }
 
-  # Solo procesa artículos (no los propios registros de resumen).
+  # Solo invoca la Lambda para BORRADORES de artículo (SK=META, status=DRAFT). Así
+  # el MODIFY que genera marcar READY no vuelve a disparar el resumen (evita el
+  # bucle) ni gastamos invocaciones en las filas de resumen (SK=SUMMARY).
   filter_criteria {
     filter {
       pattern = jsonencode({
         dynamodb = {
           Keys = {
             SK = { S = ["META"] }
+          }
+          NewImage = {
+            status = { S = ["DRAFT"] }
           }
         }
       })

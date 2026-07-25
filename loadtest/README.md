@@ -22,10 +22,12 @@ k6 run -e BASE_URL=https://<api-id>.execute-api.eu-west-1.amazonaws.com loadtest
 
 ## Smoke de la herramienta (sin AWS)
 
-Para comprobar que el script funciona, se puede lanzar contra un mock local:
+Para comprobar que el script funciona, se lanza contra un mock local incluido en el
+repo ([`mock_server.py`](mock_server.py), multihilo):
 
 ```bash
-# arranca un mock que responde JSON en /articles (puerto 8099) y luego:
+python loadtest/mock_server.py            # escucha en 127.0.0.1:8099
+# en otra terminal:
 k6 run --vus 10 --duration 10s loadtest/script.js
 ```
 

@@ -111,10 +111,10 @@
                 <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" parent="1" source="ddb" target="streams" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" parent="1" source="streams" target="sqs" edge="1">
+                <mxCell id="e16" value="dispara (batch)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" parent="1" source="streams" target="lsum" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" parent="1" source="sqs" target="lsum" edge="1">
+                <mxCell id="e17" value="DLQ (fallo tras reintentos)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#b85450;" parent="1" source="lsum" target="sqs" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" parent="1" source="lsum" target="bedrock" edge="1">
@@ -162,8 +162,8 @@
                 <mxCell id="astr" value="Streams" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
                     <mxGeometry x="480" y="90" width="100" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="asqs" value="SQS + DLQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-                    <mxGeometry x="610" y="90" width="110" height="50" as="geometry"/>
+                <mxCell id="asqs" value="SQS (DLQ)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+                    <mxGeometry x="750" y="190" width="120" height="50" as="geometry"/>
                 </mxCell>
                 <mxCell id="alsum" value="Lambda&#xa;resumen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
                     <mxGeometry x="750" y="90" width="120" height="50" as="geometry"/>
@@ -180,10 +180,10 @@
                 <mxCell id="fa3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="addb" target="astr">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="fa4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="astr" target="asqs">
+                <mxCell id="fa4" value="dispara (batch)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="astr" target="alsum">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="fa5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="asqs" target="alsum">
+                <mxCell id="fa5" value="DLQ (fallo)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;dashed=1;strokeColor=#b85450;" edge="1" parent="1" source="alsum" target="asqs">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="fa6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;" edge="1" parent="1" source="alsum" target="abed">

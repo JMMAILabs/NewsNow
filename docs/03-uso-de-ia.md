@@ -109,10 +109,31 @@ cada fase indica qué se generó con IA, qué se **verificó** y qué se **corri
 12. **Diagramas draw.io.** Construí el diagrama con el formato **draw.io** que
     sugiere el enunciado (`docs/diagrams/newsnow-arquitectura.drawio`).
 
+13. **Endurecimiento de escalabilidad (revisiones tipo *Staff*).** Sobre la base ya
+    funcional, varias rondas de revisión crítica añadieron: **caché de las lecturas del
+    API en CloudFront** (mismo origen), **sharding del GSI por fecha** (evita *hot
+    partition*), **map-reduce jerárquico** + `BatchGetItem` en el boletín, **concurrencia
+    reservada** + reintentos adaptativos contra el *throttling* de Bedrock, y **alarmas
+    CloudWatch → SNS**. Cada cambio revalidado (`pytest`, `terraform validate`/`tflint`,
+    build del frontend).
+
+14. **Coherencia y honestidad del *mock*.** El *fallback* mock de las Lambdas se acotó a
+    dev (`NEWSNOW_ALLOW_MOCK`): un fallo real de Bedrock va a la DLQ, no se enmascara. En
+    la web pública, el mock pasó a ser **solo de desarrollo**: en producción, ante un
+    fallo del API, se muestra un estado de error, no noticias inventadas.
+
+15. **Auditoría línea a línea.** Revisión completa de *todos* los ficheros del entregable
+    buscando incoherencias doc↔código. Ahí apareció un **bug real**: la Lambda de resumen
+    marcaba el artículo READY con un `update_item` sobre la fila META, y ese MODIFY volvía
+    por el stream → **bucle de auto-disparo** (y coste de Bedrock en cada vuelta).
+    Corregido con un corte por estado (`status=DRAFT`) en el código y en el filtro del
+    *event source mapping*, con test que lo cubre. También se alineó el diagrama draw.io
+    (Streams→Lambda directo, SQS=DLQ) con el código.
+
 > **Mi aportación** en todo esto: las decisiones, el criterio de qué es testeable y qué
-> no, atrapar los desajustes
-> (encoding, comentario erróneo, permiso de más, vulnerabilidad) y **ejecutar y verificar**
-> cada cambio en lugar de confiar a ciegas.
+> no, atrapar los desajustes (encoding, comentario erróneo, permiso de más, vulnerabilidad
+> del dev server, y un **bucle de auto-disparo** en el pipeline de IA) y **ejecutar y
+> verificar** cada cambio en lugar de confiar a ciegas.
 
 ---
 

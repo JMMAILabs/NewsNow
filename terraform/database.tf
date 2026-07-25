@@ -30,9 +30,9 @@ resource "aws_dynamodb_table" "content" {
 
   global_secondary_index {
     name            = "GSI1-by-date"
-    hash_key        = "GSI1PK" # DATE#yyyy-mm-dd
+    hash_key        = "GSI1PK" # DATE#yyyy-mm-dd#shard (sharded para evitar hot partition)
     range_key       = "GSI1SK" # created_at (ISO8601)
-    projection_type = "ALL"
+    projection_type = "ALL"    # la portada lee title/category del propio índice
   }
 
   # Streams: cada INSERT/MODIFY dispara la generación de resúmenes.

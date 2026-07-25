@@ -107,3 +107,9 @@ flowchart TB
 
 4. **IA: resumen diario.** **EventBridge Scheduler** dispara una Lambda cada día que
    recopila los artículos de la jornada, pide a **Bedrock** un digest y lo persiste.
+
+> **Nota de alcance:** **Route 53**, **WAF** y **DAX** aparecen como *estado objetivo* de
+> una arquitectura completa. El Terraform del MVP usa los **dominios por defecto de
+> CloudFront** (sin Route 53), **sin WAF** y **sin DAX** (se activan cuando el tráfico o
+> la seguridad lo justifiquen — ver la hoja de ruta en `01-infraestructura.md`). El resto
+> de nodos del diagrama **sí** están implementados en [`../../terraform/`](../../terraform/).

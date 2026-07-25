@@ -27,12 +27,13 @@ class FakeTable:
             item["status"] = ExpressionAttributeValues[":ready"]
 
 
-def _meta_record(article_id, title="Titular", body="Cuerpo.", seq="1"):
+def _meta_record(article_id, title="Titular", body="Cuerpo.", seq="1", status="DRAFT"):
     image = {
         "PK": {"S": f"ARTICLE#{article_id}"},
         "SK": {"S": "META"},
         "id": {"S": article_id},
         "title": {"S": title},
+        "status": {"S": status},
     }
     if body is not None:
         image["body"] = {"S": body}
@@ -71,6 +72,18 @@ def test_es_idempotente(monkeypatch):
     segundo = table.items[("ARTICLE#a1", "SUMMARY")]
 
     assert primero == segundo  # mismo resultado, sin duplicar ni corromper
+
+
+def test_no_reprocesa_articulo_ya_ready(monkeypatch):
+    # Al marcar READY se genera un MODIFY que vuelve por el stream: NO debe
+    # re-resumirse (si no, bucle infinito + coste de Bedrock en cada vuelta).
+    table = _setup(monkeypatch)
+    event = {"Records": [_meta_record("a1", status="READY", seq="1")]}
+
+    result = sa.lambda_handler(event)
+
+    assert result["batchItemFailures"] == []
+    assert ("ARTICLE#a1", "SUMMARY") not in table.items  # no se generó resumen
 
 
 def test_fallo_parcial_solo_reintenta_ese(monkeypatch):

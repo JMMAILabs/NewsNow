@@ -1,10 +1,13 @@
 """
 Lambda del resumen individual.
 
-La dispara DynamoDB Streams al crear/editar un artículo (fila SK=META): llama a
-Bedrock, guarda el resumen (SK=SUMMARY) y pasa el artículo a READY.
+La dispara DynamoDB Streams al crear/editar un artículo (fila SK=META en estado
+DRAFT): llama a Bedrock, guarda el resumen (SK=SUMMARY) y marca el artículo READY.
 
-Idempotente: reprocesar el mismo evento solo sobrescribe el resumen.
+Solo procesa borradores (DRAFT). Marcar READY genera otro MODIFY sobre la misma
+fila META que vuelve por el stream; el corte por estado evita un bucle de
+re-resumen (y de coste en Bedrock). Además es idempotente: reprocesar el mismo
+evento solo sobrescribe el resumen.
 """
 
 import os
@@ -69,6 +72,10 @@ def lambda_handler(event, _context=None):
         article = _deserialize(new_image)
         # solo nos interesan las filas META (el artículo), no las de SUMMARY
         if article.get("SK") != "META":
+            continue
+        # solo resumimos borradores: al marcar READY se produce otro MODIFY de la
+        # fila META que vuelve por el stream; sin este corte sería un bucle infinito.
+        if article.get("status") != "DRAFT":
             continue
 
         try:

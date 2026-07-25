@@ -32,8 +32,9 @@ CasoPractico_Logicalis/
 │   ├── frontend.tf                ← S3 + CloudFront (webs React estáticas)
 │   ├── auth.tf                    ← Cognito (login del panel admin)
 │   ├── database.tf                ← DynamoDB (artículos + resúmenes)
-│   ├── api.tf                     ← API Gateway + Lambda (backend REST)
-│   ├── ai.tf                      ← Lambdas de IA + EventBridge + SQS + Bedrock
+│   ├── api.tf                     ← API Gateway + Lambda (backend REST) + access logs
+│   ├── ai.tf                      ← Lambdas de IA + EventBridge + DLQ (SQS) + Bedrock
+│   ├── observability.tf           ← Alarmas CloudWatch + SNS (errores, DLQ, 5xx…)
 │   └── providers.tf / variables.tf / outputs.tf
 │
 ├── backend/                       ← API REST en Python
@@ -51,9 +52,9 @@ CasoPractico_Logicalis/
 │   ├── public-web/                ← Web pública (portada + resumen diario)
 │   └── admin-web/                 ← Panel admin (login + CRUD)
 │
-├── loadtest/                      ← Prueba de carga con k6
+├── loadtest/                      ← Prueba de carga con k6 (+ mock server para el smoke)
 │
-└── tests/                         ← pytest: idempotencia, batch, parseo JSON
+└── tests/                         ← pytest: idempotencia, batch, portada, prompts, parseo…
 ```
 
 ---
