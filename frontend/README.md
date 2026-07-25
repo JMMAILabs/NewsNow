@@ -15,6 +15,8 @@ Ambas funcionan **sin backend** (fallback *mock*), para poder verlas en local.
   que sirve el HTML, así que llama al API por el **mismo origen** (`/articles`,
   `/daily-summary`) → CloudFront cachea esas lecturas en el edge. Por eso su build de
   producción va **sin `VITE_API_URL`** (ver [`public-web/.env.example`](public-web/.env.example)).
+  El *fallback* a datos de ejemplo es **solo de desarrollo**: si el API falla en
+  producción, la web muestra un **estado de error**, nunca noticias inventadas.
 - **Panel admin:** su distribución no cachea el API; usa `VITE_API_URL` (output
   `api_endpoint` de Terraform) para llamar a API Gateway con el JWT.
 

@@ -6,16 +6,19 @@ export default function App() {
   const [daily, setDaily] = useState(null);
   const [mock, setMock] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     Promise.all([
       getArticles().then((r) => {
         setArticles(r.articles);
         setMock((m) => m || r.mock);
+        setError((e) => e || r.error);
       }),
       getDailySummary().then((r) => {
         setDaily(r.daily);
         setMock((m) => m || r.mock);
+        setError((e) => e || r.error);
       }),
     ]).finally(() => setLoading(false));
   }, []);
@@ -31,6 +34,13 @@ export default function App() {
       </header>
 
       {loading && <p className="loading">Cargando las noticias del día…</p>}
+
+      {!loading && error && (
+        <p className="error">
+          No se han podido cargar las noticias en este momento. Vuelve a intentarlo
+          en unos minutos.
+        </p>
+      )}
 
       {daily && (
         <section className="daily">

@@ -7,9 +7,12 @@
 // - Se puede forzar una URL absoluta (VITE_API_URL, p. ej. contra API GW directo)
 //   o el mock (VITE_USE_MOCK=true).
 const API_BASE = import.meta.env.VITE_API_URL || "";
-const USE_MOCK =
-  import.meta.env.VITE_USE_MOCK === "true" ||
-  (import.meta.env.DEV && !import.meta.env.VITE_API_URL);
+// El mock SOLO se permite en desarrollo (o si se fuerza con VITE_USE_MOCK). En
+// producción, ante un fallo del API mostramos un estado de error, NUNCA datos de
+// ejemplo: un periódico no debe pintar noticias inventadas durante una caída.
+const FORCE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const ALLOW_MOCK = FORCE_MOCK || import.meta.env.DEV;
+const USE_MOCK = FORCE_MOCK || (import.meta.env.DEV && !import.meta.env.VITE_API_URL);
 
 const MOCK = {
   articles: [
@@ -59,22 +62,24 @@ const MOCK = {
 };
 
 async function getJSON(path, fallback) {
-  if (USE_MOCK) return { data: fallback, mock: true };
+  if (USE_MOCK) return { data: fallback, mock: true, error: false };
   try {
     const res = await fetch(`${API_BASE}${path}`);
     if (!res.ok) throw new Error(String(res.status));
-    return { data: await res.json(), mock: false };
+    return { data: await res.json(), mock: false, error: false };
   } catch {
-    return { data: fallback, mock: true }; // API caída o inaccesible → datos de ejemplo
+    // dev/forzado → datos de ejemplo; producción → estado de error (sin inventar nada).
+    if (ALLOW_MOCK) return { data: fallback, mock: true, error: false };
+    return { data: null, mock: false, error: true };
   }
 }
 
 export async function getArticles() {
-  const { data, mock } = await getJSON("/articles", { articles: MOCK.articles });
-  return { articles: data.articles || MOCK.articles, mock };
+  const { data, mock, error } = await getJSON("/articles", { articles: MOCK.articles });
+  return { articles: (data && data.articles) || [], mock, error };
 }
 
 export async function getDailySummary() {
-  const { data, mock } = await getJSON("/daily-summary", MOCK.daily);
-  return { daily: data, mock };
+  const { data, mock, error } = await getJSON("/daily-summary", MOCK.daily);
+  return { daily: data, mock, error };
 }
