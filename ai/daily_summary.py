@@ -53,15 +53,20 @@ def _query_day_metas(date: str) -> list[dict]:
 def _batch_get_summaries(pks: list[str]) -> dict[str, dict]:
     """Trae los SUMMARY de varios artículos con BatchGetItem (máx. 100 por lote).
 
-    Evita el N+1 (un GetItem por artículo) que a gran volumen agotaría el tiempo
-    de la Lambda.
+    Evita el N+1 (un GetItem por artículo) que a gran volumen agotaría el tiempo de
+    la Lambda. Reintenta las `UnprocessedKeys`: bajo throttling o respuestas grandes,
+    BatchGetItem puede devolver parte de las claves sin servir; sin reintentarlas se
+    perderían resúmenes del boletín en silencio.
     """
     out: dict[str, dict] = {}
     for i in range(0, len(pks), 100):
         keys = [{"PK": pk, "SK": "SUMMARY"} for pk in pks[i : i + 100]]
-        resp = _dynamodb.batch_get_item(RequestItems={TABLE_NAME: {"Keys": keys}})
-        for item in resp.get("Responses", {}).get(TABLE_NAME, []):
-            out[item["PK"]] = item
+        request = {TABLE_NAME: {"Keys": keys}}
+        while request:
+            resp = _dynamodb.batch_get_item(RequestItems=request)
+            for item in resp.get("Responses", {}).get(TABLE_NAME, []):
+                out[item["PK"]] = item
+            request = resp.get("UnprocessedKeys") or None
     return out
 
 
