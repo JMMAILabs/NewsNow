@@ -6,7 +6,7 @@ Se invoca desde API Gateway (HTTP API, payload v2.0).
 
 Rutas:
     GET    /articles            → portada: publicados (READY) + su resumen de IA
-    GET    /articles?view=admin → panel: todos los estados (incl. borradores) + cuerpo
+    GET    /articles?view=admin → panel: última semana, todos los estados + cuerpo
     GET    /articles/{id}       → un artículo + su resumen
     GET    /daily-summary       → boletín de la jornada anterior
     POST   /articles            → crea artículo            (requiere JWT)
@@ -42,6 +42,9 @@ GSI_SHARDS = int(os.environ.get("GSI_SHARDS", "10"))
 # con un 500 opaco en el PutItem.
 MAX_BODY_BYTES = 350_000
 
+# El panel admin gestiona los artículos de la última semana (no solo los de hoy).
+ADMIN_WINDOW_DAYS = 7
+
 
 # helpers
 
@@ -76,6 +79,12 @@ def _yesterday() -> str:
     return (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
 
 
+def _recent_dates(n: int) -> list[str]:
+    """Las últimas n fechas (hoy incluido), como 'YYYY-MM-DD'."""
+    base = datetime.now(UTC)
+    return [(base - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(n)]
+
+
 # operaciones CRUD
 
 def _batch_get_summaries(pks: list[str]) -> dict[str, dict]:
@@ -92,36 +101,44 @@ def _batch_get_summaries(pks: list[str]) -> dict[str, dict]:
     return out
 
 
+def _query_metas(dates: list[str]) -> dict[str, dict]:
+    """Fan-in sobre (fecha × shard) del GSI por fecha, deduplicado por PK."""
+    metas: dict[str, dict] = {}
+    for date in dates:
+        for shard in range(GSI_SHARDS):
+            result = _table.query(
+                IndexName="GSI1-by-date",
+                KeyConditionExpression=Key("GSI1PK").eq(f"DATE#{date}#{shard}"),
+                ScanIndexForward=False,
+                Limit=50,
+            )
+            for i in result.get("Items", []):
+                if i.get("SK") == "META":
+                    metas[i["PK"]] = i
+    return metas
+
+
 def list_articles(event) -> dict:
-    """Artículos de hoy (fan-in sobre los shards del GSI, dedup + orden por fecha).
+    """Lista de artículos (fan-in sobre los shards del GSI, dedup + orden por fecha).
 
     Dos vistas sobre el mismo endpoint:
-    - **pública** (por defecto): solo artículos **READY** y con su **resumen de IA**
-      (headline/summary/tags), sin el cuerpo → tarjetas de portada. Es la que cachea
-      CloudFront.
-    - **admin** (`?view=admin`): todos los estados, con cuerpo y `status`, para gestionar
-      los artículos desde el panel.
+    - **pública** (por defecto): artículos de **hoy** en estado **READY** y con su
+      **resumen de IA** (headline/summary/tags), sin el cuerpo → tarjetas de portada.
+      Es la que cachea CloudFront.
+    - **admin** (`?view=admin`): la **última semana** en todos los estados (incluidos
+      borradores), con cuerpo y `status`, para gestionar los artículos desde el panel.
     """
     view = (event.get("queryStringParameters") or {}).get("view", "public")
-    today = _today()
-    metas: dict[str, dict] = {}
-    for shard in range(GSI_SHARDS):
-        result = _table.query(
-            IndexName="GSI1-by-date",
-            KeyConditionExpression=Key("GSI1PK").eq(f"DATE#{today}#{shard}"),
-            ScanIndexForward=False,
-            Limit=50,
-        )
-        for i in result.get("Items", []):
-            if i.get("SK") == "META":
-                metas[i["PK"]] = i
-    ordered = sorted(metas.values(), key=lambda a: a.get("GSI1SK", ""), reverse=True)
 
     if view == "admin":
+        metas = _query_metas(_recent_dates(ADMIN_WINDOW_DAYS))
+        ordered = sorted(metas.values(), key=lambda a: a.get("GSI1SK", ""), reverse=True)
         top = ordered[:50]
         return _response(200, {"articles": top, "count": len(top)})
 
-    # Vista pública: solo publicados (READY) + su resumen de IA, sin el cuerpo.
+    # Vista pública: solo hoy, solo publicados (READY) + su resumen de IA, sin el cuerpo.
+    metas = _query_metas([_today()])
+    ordered = sorted(metas.values(), key=lambda a: a.get("GSI1SK", ""), reverse=True)
     ready = [m for m in ordered if m.get("status") == "READY"][:50]
     summaries = _batch_get_summaries([m["PK"] for m in ready])
     articles = []

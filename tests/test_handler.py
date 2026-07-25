@@ -86,6 +86,13 @@ def test_vista_admin_incluye_borradores_y_status(monkeypatch):
     assert any(a.get("status") == "DRAFT" for a in body["articles"])  # con su status
 
 
+def test_recent_dates_cubre_la_ultima_semana():
+    dates = handler._recent_dates(handler.ADMIN_WINDOW_DAYS)
+    assert len(dates) == handler.ADMIN_WINDOW_DAYS
+    assert handler._today() in dates      # incluye hoy
+    assert handler._yesterday() in dates  # y días anteriores (gestión multi-día)
+
+
 def test_create_rechaza_cuerpo_demasiado_grande(monkeypatch):
     monkeypatch.setattr(handler, "_table", FakeTable())
     event = {"body": json.dumps({"title": "t", "body": "x" * (handler.MAX_BODY_BYTES + 1)})}

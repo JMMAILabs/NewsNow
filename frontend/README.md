@@ -21,9 +21,10 @@ Ambas funcionan **sin backend** (fallback *mock*), para poder verlas en local.
   `api_endpoint` de Terraform) para llamar a API Gateway con el JWT.
 
 Ambas apps consumen el mismo `GET /articles`, pero con **dos vistas**: la web pública
-recibe solo los artículos **publicados (READY)** con su **resumen de IA** (sin el cuerpo),
-y el panel pide `?view=admin` para ver **todos los estados** (incluidos borradores) con
-el cuerpo y el `status`, que es lo que necesita para gestionarlos.
+recibe los artículos **de hoy publicados (READY)** con su **resumen de IA** (sin el
+cuerpo), y el panel pide `?view=admin` para ver la **última semana** en **todos los
+estados** (incluidos borradores) con el cuerpo y el `status`, que es lo que necesita
+para gestionarlos.
 
 ## Ejecutar en local
 

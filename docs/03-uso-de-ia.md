@@ -7,6 +7,17 @@ de arquitectura y la validación de todo lo entregado.
 
 ---
 
+## Ficha del proyecto
+
+| Dato | Valor |
+|---|---|
+| ⏱️ **Tiempo de trabajo humano** | **~8 horas** (diseño, decisiones de arquitectura, revisión y verificación) |
+| 🤖 **Asistente de IA** | Claude (Claude Code), como *pair programmer* |
+| 🧪 **Verificación** | prototipo ejecutado · `terraform validate`/`fmt`/`tflint` · **29 tests** en verde (`pytest`) · `ruff` · prompt validado con modelo real en **PartyRock** |
+| 📦 **Entregable** | IaC (Terraform) · backend REST (Python) · 2 SPAs React · prototipo de IA · documentación · CI |
+
+---
+
 ## Para qué he usado la IA
 
 | Fase | Uso de la IA | Qué he aportado / controlado yo |
